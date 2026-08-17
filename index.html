@@ -283,6 +283,71 @@ const winToneFor = c => clamp(rr(0.2, 0.28), 0.05, Math.max(0.06, c - 0.15));
 let curPhase = 0;                                          // per-building window phase
 
 function cornice(bx, y, bz, w, d, c) { addBox(bx, y - 0.45, bz, w + 0.55, 0.5, d + 0.55, Math.min(0.92, c * 1.3 + 0.1)); }
+const wOf = (lx, lz) => [curD.gx + lx * curD.cos - lz * curD.sin, curD.gz + lx * curD.sin + lz * curD.cos];
+const terraceSpots = [];
+
+/* ---- rooftop kit: the NYC/Chicago roofscape ---- */
+function parapet(bx, y, bz, w, d, c) {
+  const pc = Math.min(0.9, c * 1.08);
+  addBox(bx - w / 2 + 0.15, y, bz, 0.3, 0.5, d, pc);
+  addBox(bx + w / 2 - 0.15, y, bz, 0.3, 0.5, d, pc);
+  addBox(bx, y, bz - d / 2 + 0.15, w - 0.6, 0.5, 0.3, pc);
+  addBox(bx, y, bz + d / 2 - 0.15, w - 0.6, 0.5, 0.3, pc);
+}
+function roofKit(bx, y, bz, w, d, c, industrial) {
+  const area = w * d;
+  if (area > 40) parapet(bx, y, bz, w, d, c);
+  if (industrial) {
+    if (R() < 0.55) {                                        // sawtooth skylights
+      const n = Math.max(2, Math.min(4, (d / 2.4) | 0));
+      for (let i = 0; i < n; i++)
+        addShape(3, bx, y, bz - d / 2 + (i + 0.7) * (d / (n + 0.4)), 1.3, rr(0.7, 1.1), Math.min(3.2, w * 0.5), c * 0.9, c * 0.9, Math.PI / 2);
+    }
+    for (let i = 0, n = 1 + (R() * 2 | 0); i < n; i++)
+      addShape(4, bx + rr(-0.32, 0.32) * w, y, bz + rr(-0.32, 0.32) * d, rr(0.16, 0.3), rr(0.7, 1.4), rr(0.16, 0.3), c * 0.8, c * 0.8);
+    return;
+  }
+  if (area > 55 && R() < 0.55)                               // stair bulkhead
+    addBox(bx + (R() < 0.5 ? -1 : 1) * (w / 2 - 2.2), y, bz + rr(-0.3, 0.3) * Math.max(0, d - 4), rr(2.2, 3.2), rr(2.2, 2.9), rr(1.8, 2.6), c * 0.95);
+  if (area > 70 && R() < 0.4) {                              // wooden water tank
+    const [wx, wz] = wOf(bx + rr(-0.25, 0.25) * w, bz + rr(-0.25, 0.25) * d);
+    roofSpots.push([wx, y, wz]);
+  }
+  const rb = R();
+  if (area > 90 && rb < 0.12) {                              // blank rooftop billboard
+    const alongX = w >= d;
+    const pw = Math.min(7, (alongX ? w : d) * 0.62);
+    const eSign = R() < 0.5 ? 1 : -1;
+    if (alongX) {
+      const ez = bz + eSign * (d / 2 - 0.9);
+      for (const s of [-1, 1]) addBox(bx + s * pw * 0.36, y, ez, 0.22, 1.7, 0.22, 0.3);
+      addBox(bx, y + 1.55, ez, pw, 2.7, 0.24, 0.32);
+      addBox(bx, y + 1.7, ez + eSign * 0.16, pw * 0.93, 2.25, 0.08, 0.94);
+    } else {
+      const ex = bx + eSign * (w / 2 - 0.9);
+      for (const s of [-1, 1]) addBox(ex, y, bz + s * pw * 0.36, 0.22, 1.7, 0.22, 0.3);
+      addBox(ex, y + 1.55, bz, 0.24, 2.7, pw, 0.32);
+      addBox(ex + eSign * 0.16, y + 1.7, bz, 0.08, 2.25, pw * 0.93, 0.94);
+    }
+  } else if (area > 70 && rb < 0.22) {                       // roof terrace: planters + umbrella
+    addBox(bx - w * 0.2, y, bz + d * 0.2, 1.4, 0.5, 0.55, 0.52);
+    addBox(bx + w * 0.24, y, bz - d * 0.16, 0.55, 0.5, 1.4, 0.52);
+    const ux = bx + rr(-0.15, 0.15) * w, uz = bz + rr(-0.15, 0.15) * d;
+    addBox(ux, y, uz, 0.09, 1.9, 0.09, 0.25);
+    addShape(2, ux, y + 1.8, uz, 1.9, 0.6, 1.9, 0.93, 0.93);
+    const [wx, wz] = wOf(bx, bz);
+    terraceSpots.push([wx, y, wz]);
+  }
+  for (let i = 0, n = 1 + (R() * 3 | 0); i < n; i++)         // vent pipes
+    addShape(4, bx + rr(-0.33, 0.33) * w, y, bz + rr(-0.33, 0.33) * d, rr(0.15, 0.28), rr(0.7, 1.8), rr(0.15, 0.28), c * 0.8, c * 0.8);
+  if (area > 60 && R() < 0.4)                                // HVAC drum
+    addShape(4, bx + rr(-0.25, 0.25) * w, y, bz + rr(-0.25, 0.25) * d, rr(0.75, 1.2), rr(0.8, 1.3), rr(0.75, 1.2), c * 0.85, c * 0.85);
+  if (R() < 0.06) {                                          // flagpole
+    const fh = rr(5, 7.5);
+    addBox(bx, y, bz, 0.09, fh, 0.09, 0.4);
+    addBox(bx + 0.7, y + fh - 0.55, bz, 1.3, 0.6, 0.05, 0.18);
+  }
+}
 
 /* One building: podium/tower massing, varied roofs, cornices, fins. */
 function addBuilding(bx, bz, w, d, h, opts = {}) {
@@ -294,24 +359,34 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
   addShape(0, bx, 0, bz, w * 1.05, 0.45, d * 1.05, pl, pl);   // contact-AO plinth
   if (h < 7) {                                              // dockland slab
     addShape(0, bx, 0, bz, w, h, d, c, win);
-    if (R() < 0.45) addShape(3, bx, h, bz, w * 0.9, h * 0.6, d * 0.9, c * 0.94, c * 0.94, R() < 0.5 ? 0 : Math.PI / 2);
-    else cornice(bx, h, bz, w * 0.98, d * 0.98, c);
+    if (R() < 0.45) {
+      addShape(3, bx, h, bz, w * 0.9, h * 0.6, d * 0.9, c * 0.94, c * 0.94, R() < 0.5 ? 0 : Math.PI / 2);
+      if (R() < 0.4) addBox(bx + rr(-0.3, 0.3) * w, h, bz + rr(-0.3, 0.3) * d, 0.5, h * 0.6 + rr(0.5, 1), 0.5, c * 0.85);
+    } else {
+      cornice(bx, h, bz, w * 0.98, d * 0.98, c);
+      roofKit(bx, h, bz, w, d, c, true);
+    }
     return;
   }
   if (h < 32) {                                             // low fabric
     addShape(0, bx, 0, bz, w, h, d, c, win);
     const r = R();
-    if (r < 0.4) {                                          // gable roof
-      const rx2 = w >= d;
-      addShape(3, bx, h, bz, rx2 ? d * 0.98 : w * 0.98, rr(2.5, 4.5), rx2 ? w * 0.98 : d * 0.98, c * 0.9, c * 0.9, rx2 ? Math.PI / 2 : 0);
+    if (r < 0.4) {                                          // gable roof + chimney
+      const rx2 = w >= d, rh = rr(2.5, 4.5);
+      addShape(3, bx, h, bz, rx2 ? d * 0.98 : w * 0.98, rh, rx2 ? w * 0.98 : d * 0.98, c * 0.9, c * 0.9, rx2 ? Math.PI / 2 : 0);
+      if (R() < 0.7) {
+        const along = rr(-0.3, 0.3);
+        const cxq = bx + (rx2 ? along * w : rr(-0.12, 0.12) * w);
+        const czq = bz + (rx2 ? rr(-0.12, 0.12) * d : along * d);
+        const ch = rh + rr(0.5, 1.1);
+        addBox(cxq, h, czq, 0.55, ch, 0.55, c * 0.85);
+        addBox(cxq, h + ch, czq, 0.8, 0.14, 0.8, c * 0.95);
+      }
     } else if (r < 0.58) addShape(2, bx, h, bz, w * 0.92, rr(2.5, 5), d * 0.92, c * 0.88, c * 0.88);
     else if (r < 0.72) addShape(1, bx, h, bz, w * 0.95, rr(2, 3.5), d * 0.95, c, win);
     else {
       cornice(bx, h, bz, w, d, c);
-      const n = (R() * 3) | 0;
-      for (let i = 0; i < n; i++)
-        addBox(bx + rr(-w, w) * 0.3, h, bz + rr(-d, d) * 0.3, rr(1.2, 2.6), rr(0.8, 2), rr(1.2, 2.6), c * rr(0.85, 1.05));
-      if (R() < 0.3) roofSpots.push([bx + rr(-w, w) * 0.25, h, bz + rr(-d, d) * 0.25]);
+      roofKit(bx, h, bz, w, d, c, false);
     }
   } else if (h < 85) {                                      // mid-rise: base + setback
     const baseH = h * rr(0.55, 0.72);
@@ -322,14 +397,14 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
     const r = R();
     if (r < 0.28) addShape(2, bx, h, bz, w * s1 * 0.9, rr(3, 6), d * s1 * 0.9, c * 0.88, c * 0.88);
     else if (r < 0.5) addShape(1, bx, h, bz, w * s1 * 0.94, rr(2.5, 4.5), d * s1 * 0.94, c, win);
-    else cornice(bx, h, bz, w * s1, d * s1, c);
-    if (R() < 0.35) roofSpots.push([bx + rr(-w, w) * 0.2, h, bz + rr(-d, d) * 0.2]);
+    else { cornice(bx, h, bz, w * s1, d * s1, c); roofKit(bx, h, bz, w * s1, d * s1, c, false); }
     if (h > 55 && R() < 0.4) finRow(bx, bz, w, d, baseH * 0.9, c);
   } else {                                                  // tower: podium + shaft + crown
     const round = !opts.landmark && R() < 0.07;
     const podH = rr(9, 16);
     addShape(0, bx, 0, bz, w, podH, d, c, win);
     cornice(bx, podH, bz, w, d, c);
+    if (R() < 0.5) parapet(bx, podH, bz, w, d, c);           // podium terrace ledge
     const tw = w * rr(0.66, 0.8), td = d * rr(0.66, 0.8);
     if (round) {
       const rad = Math.min(tw, td) * 0.52;
@@ -354,7 +429,14 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
         cornice(bx, topY, bz, tw * s2, td * s2, c);
         for (let i = 0, n = 1 + (R() * 2 | 0); i < n; i++)
           addBox(bx + rr(-tw, tw) * s2 * 0.25, topY, bz + rr(-td, td) * s2 * 0.25, rr(1.2, 2.2), rr(0.9, 1.6), rr(1.2, 2.2), c * 0.9);
-        if (R() < 0.5) roofSpots.push([bx + tw * s2 * 0.2, topY, bz - td * s2 * 0.15]);
+        for (let i = 0, n = 1 + (R() * 2 | 0); i < n; i++)
+          addShape(4, bx + rr(-0.3, 0.3) * tw * s2, topY, bz + rr(-0.3, 0.3) * td * s2, rr(0.15, 0.28), rr(0.7, 1.6), rr(0.15, 0.28), c * 0.8, c * 0.8);
+        if (R() < 0.5) { const [wx, wz] = wOf(bx + tw * s2 * 0.2, bz - td * s2 * 0.15); roofSpots.push([wx, topY, wz]); }
+        if (R() < 0.12) {
+          const fh = rr(5, 8);
+          addBox(bx, topY, bz, 0.09, fh, 0.09, 0.4);
+          addBox(bx + 0.7, topY + fh - 0.55, bz, 1.3, 0.6, 0.05, 0.18);
+        }
       } else {                                               // gabled tower cap
         const rx2 = tw >= td;
         addShape(3, bx, topY, bz, (rx2 ? td : tw) * s2 * 0.96, rr(4, 7.5), (rx2 ? tw : td) * s2 * 0.96, c * 0.9, c * 0.9, rx2 ? Math.PI / 2 : 0);
@@ -683,12 +765,13 @@ const GSIZE = 1700;
 {
   const parts = [];
   function bridge(zc, dir) {
-    const x0 = dir * 215, x1 = dir * 650;
+    const edge = bend(zc) + dir * halfWidth(zc);             // anchor at the actual shoreline
+    const x0 = edge + dir * 4, x1 = x0 + dir * 360;
     parts.push(part(Box(Math.abs(x1 - x0), 2.2, 12), 0.72, { x: (x0 + x1) / 2, y: 16, z: zc }));
     const t0 = lerp(x0, x1, 0.3), t1 = lerp(x0, x1, 0.7);
     for (const tx of [t0, t1]) {
-      for (const dz of [-6.4, 6.4]) parts.push(part(Box(3.2, 62, 3.2), 0.6, { x: tx, y: 0, z: zc + dz }));
-      parts.push(part(Box(3, 3.2, 16), 0.6, { x: tx, y: 56, z: zc }));
+      for (const dz of [-6.4, 6.4]) parts.push(part(Box(3.2, 62, 3.2), 0.55, { x: tx, y: 0, z: zc + dz }));
+      parts.push(part(Box(3, 3.2, 16), 0.55, { x: tx, y: 56, z: zc }));
     }
     for (const dz of [-5.8, 5.8]) {
       const spans = [[x0, 17, t0, 58], [t0, 58, t1, 58], [t1, 58, x1, 17]];
@@ -700,15 +783,15 @@ const GSIZE = 1700;
           const p0x = lerp(ax, bx, u0), p0y = lerp(ay, by, u0) - sag * Math.sin(Math.PI * u0) * 0.55;
           const p1x = lerp(ax, bx, u1), p1y = lerp(ay, by, u1) - sag * Math.sin(Math.PI * u1) * 0.55;
           const len = Math.hypot(p1x - p0x, p1y - p0y);
-          parts.push(part(Box(len + 0.4, 0.85, 0.85), 0.5,
+          parts.push(part(Box(len + 0.5, 1.3, 1.3), 0.38,   // thick dark cables: solid arcs, no streaking
             { x: (p0x + p1x) / 2, y: (p0y + p1y) / 2, z: zc + dz, rz: Math.atan2(p1y - p0y, p1x - p0x) }));
         }
       }
       for (let u = 0.06; u < 1; u += 0.09)
-        parts.push(part(Box(0.5, 30, 0.5), 0.58, { x: lerp(t0, t1, u), y: 32, z: zc + dz }));
+        parts.push(part(Box(0.6, 30, 0.6), 0.5, { x: lerp(t0, t1, u), y: 32, z: zc + dz }));
     }
   }
-  bridge(-340, 1); bridge(-60, -1);
+  bridge(330, 1); bridge(-60, -1);
   const m = new THREE.Mesh(mergeGeoms(parts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92 }));
   m.castShadow = P.shadows; m.frustumCulled = false;
   scene.add(m);
@@ -866,6 +949,11 @@ function addWalker(o) { walkers.push(Object.assign({ ph: R() * 9, scale: 1, tint
   const idlePhone = [[12.35, 46, 0.25], [12.5, 54, 2.9], [12.15, 61.5, 1.9], [12.55, 67.5, -0.2], [-12.4, 50, 0.3], [-12.2, 64, 2.8]];
   for (const [ix, iz, iry] of idlePhone)
     addWalker({ v: 5, x: ix, z: iz, dir: 1, s: 0, idle: true, idleRy: iry, scale: rr(0.94, 1.04), tint: rr(0.86, 1) });
+  /* a few figures up on roof terraces near the rooftop-skim path */
+  const upNear = terraceSpots.filter(t => Math.hypot(t[0] - 60, t[2] + 40) < 220).slice(0, 3);
+  for (const [tx, ty, tz] of upNear)
+    for (const s of [-1, 1])
+      addWalker({ v: WALK_SET[(R() * WALK_SET.length) | 0], x: tx + s * 0.45, z: tz + s * 0.12, y0: ty, dir: -s, s: 0, idle: true, scale: rr(0.92, 1.04), tint: rr(0.86, 1) });
 }
 const crossers = [];
 for (let i = 0; i < 6; i++) {
@@ -1352,7 +1440,7 @@ function tick() {
       }
       const ry = w.idle ? (w.idleRy !== undefined ? w.idleRy : (w.dir > 0 ? 0.9 : -2.2)) + Math.sin(t * 0.4 + w.ph) * (w.idleRy !== undefined ? 0.06 : 0.14)
         : w.axis === 'z' ? (w.dir > 0 ? 0 : Math.PI) : (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
-      placePerson(w, peopleMeshes[w.v], w.x + (w.xOff || 0), 0, w.z, ry, bob, sway, w.scale);
+      placePerson(w, peopleMeshes[w.v], w.x + (w.xOff || 0), w.y0 || 0, w.z, ry, bob, sway, w.scale);
     }
     const canWalk = walkWindow(simT);
     for (const c of crossers) {
@@ -1432,7 +1520,7 @@ function tick() {
   if (blobMesh && peopleActive) {
     for (const b of blobs) {
       const r = b.ref;
-      if (b.kind === 'p') { D3.position.set(r.x + (r.xOff || 0), 0.03, r.z); D3.scale.set(0.42 * (r.scale || 1), 1, 0.42 * (r.scale || 1)); }
+      if (b.kind === 'p') { D3.position.set(r.x + (r.xOff || 0), (r.y0 || 0) + 0.03, r.z); D3.scale.set(0.42 * (r.scale || 1), 1, 0.42 * (r.scale || 1)); }
       else if (b.kind === 'd') { D3.position.set(r.owner.x + 0.55, 0.03, r.owner.z - 0.9); D3.scale.set(0.3, 1, 0.3); }
       else if (b.kind === 'c') { D3.position.set(r.ln.ox + r.ln.dx * r.s + r.ln.px * r.off, 0.04, r.ln.oz + r.ln.dz * r.s + r.ln.pz * r.off); D3.scale.set(1.15, 1, carLen[r.v] * 0.5 * 0.55); }
       else { D3.position.set(r.x, 0.04, r.z); D3.scale.set(1.15, 1, carLen[r.v] * 0.5 * 0.55); if (Math.abs(Math.sin(r.ry || 0)) > 0.5) D3.scale.set(carLen[r.v] * 0.5 * 0.55, 1, 1.15); }
