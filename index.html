@@ -85,11 +85,11 @@ const MOBILE = tier === 'mobile';
 
 const PRESETS = {
   desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048, mist: 3,
-             people: 145, cars: 34, parked: 52, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
+             people: 132, cars: 34, parked: 48, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
              people: 108, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
-             people: 72,  cars: 18, parked: 24, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+             people: 62,  cars: 18, parked: 21, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -735,7 +735,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 39 : 22;
+  const mstep = MOBILE ? 43 : 23;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
@@ -1186,52 +1186,111 @@ function personCore(v, c) {
 }
 /* the vinyl figure: big blank sphere head, soft belly torso, thick hanging
    arms with mitt hands, chunky legs with forward foot bumps — per reference */
+/* the whole upper body — head, neck, torso, shoulders, arms, mitt hands — as
+   ONE continuous surface: each horizontal ring is the smooth-max union of the
+   torso, head, and arm cross-sections, so every join has continuous curvature
+   like a cast vinyl figure. Legs stay separate (the reference keeps a crotch split). */
+function radialBody(o) {
+  const ph = !!o.phone, skin = 0.97, zh = ph ? 0.04 : 0;
+  const prof = o.dress
+    ? [[0.305, 0.26], [0.27, 0.44], [0.235, 0.68], [0.235, 0.9], [0.2, 1.08], [0.145, 1.2], [0.05, 1.3]]
+    : [[0.16, 0.42], [0.215, 0.68], [0.243, 0.88], [0.222, 1.05], [0.165, 1.2], [0.05, 1.3]];
+  const yHem = prof[0][1], yTop = 1.772;
+  const torsoR = y => {
+    if (y <= prof[0][1]) return prof[0][0];
+    for (let i = 0; i < prof.length - 1; i++)
+      if (y <= prof[i + 1][1]) {
+        const t = (y - prof[i][1]) / (prof[i + 1][1] - prof[i][1]);
+        return lerp(prof[i][0], prof[i + 1][0], t * t * (3 - 2 * t));
+      }
+    return 0;
+  };
+  const headR = 0.265, headY = 1.5;
+  const headSect = y => { const dy = (y - headY) / 1.03; const q = headR * headR - dy * dy; return q > 0 ? Math.sqrt(q) : 0; };
+  const Sy = 1.14, Wy = 0.65, rM = 0.115;
+  const armSect = y => {
+    if (y > Sy + 0.06 || y < Wy - rM) return [0, 0.27];
+    if (y >= Wy) {
+      const t = clamp((Sy - y) / (Sy - Wy), 0, 1);
+      return [0.082 + 0.03 * sstep(t, 0.72, 1) - 0.02 * sstep(1 - t, 0.75, 1), lerp(0.258, 0.298, t)];
+    }
+    const q = rM * rM - (Wy - y) * (Wy - y);
+    return [q > 0 ? Math.sqrt(q) : 0, 0.298];
+  };
+  const NA = 18, NY = 21, k = 0.045;
+  const pos = [], col = [];
+  const sides = ph ? [-1] : [-1, 1];
+  for (let iy = 0; iy <= NY; iy++) {
+    const y = lerp(yHem, yTop, iy / NY);
+    const rT = torsoR(y), rH = headSect(y), [rA, ax] = armSect(y);
+    for (let ia = 0; ia < NA; ia++) {
+      const th = ia / NA * Math.PI * 2, dx = Math.cos(th), dz = Math.sin(th);
+      const sup = [];
+      if (rT > 0.001) sup.push(rT);
+      if (rH > 0.001) { const dc = dz * zh, disc = rH * rH - (zh * zh - dc * dc); if (disc > 0) sup.push(dc + Math.sqrt(disc)); }
+      if (rA > 0.001) for (const s of sides) {
+        const dc = dx * s * ax, disc = rA * rA - (ax * ax - dc * dc);
+        if (disc > 0 && dc > 0) sup.push(dc + Math.sqrt(disc));
+      }
+      let R2 = 0.001;
+      if (sup.length) {
+        const m = Math.max(...sup);
+        let sum = 0; for (const sv of sup) sum += Math.exp((sv - m) / k);
+        R2 = m + k * Math.log(sum);
+      }
+      pos.push(R2 * dx, y, R2 * dz);
+      const c2 = lerp(o.top, skin, sstep(y, 1.3, 1.42));
+      col.push(c2, c2, c2);
+    }
+  }
+  const idx = [];
+  for (let iy = 0; iy < NY; iy++) for (let ia = 0; ia < NA; ia++) {
+    const a = iy * NA + ia, b = iy * NA + (ia + 1) % NA, c3 = a + NA, d2 = b + NA;
+    idx.push(a, c3, b, b, c3, d2);
+  }
+  const apex = pos.length / 3; pos.push(0, yTop + 0.004, zh); col.push(skin, skin, skin);
+  for (let ia = 0; ia < NA; ia++) idx.push(NY * NA + ia, apex, NY * NA + (ia + 1) % NA);
+  const base = pos.length / 3; pos.push(0, yHem, 0); col.push(o.top, o.top, o.top);
+  for (let ia = 0; ia < NA; ia++) idx.push(ia, (ia + 1) % NA, base);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo.toNonIndexed();
+}
 function makePerson(o) {
   const g = [];
-  const skin = 0.97, ph = !!o.phone;
+  const ph = !!o.phone;
   /* legs + feet (short under a dress hem) */
   for (const s of [-1, 1]) {
     g.push(part(Cap(0.105, o.dress ? 0.16 : 0.34, 8), o.legsC, { x: s * 0.115, y: o.dress ? 0.27 : 0.37 }));
     g.push(part(Sph(0.095, 8, 6), 0.22, { x: s * 0.115, y: 0.075, z: 0.09, sy: 0.72, sz: 1.3 }));
   }
-  /* torso: soft lathe, belly out, shoulders rounding into a neck pinch */
-  const prof = o.dress
-    ? [[0.305, 0.26], [0.27, 0.44], [0.235, 0.68], [0.235, 0.9], [0.2, 1.08], [0.145, 1.2], [0.05, 1.28]]
-    : [[0.15, 0.48], [0.215, 0.68], [0.243, 0.88], [0.222, 1.05], [0.165, 1.2], [0.05, 1.28]];
-  g.push(part(new THREE.LatheGeometry(V2(prof), 12), o.top, {}));
-  /* arms: thick, hanging, ending in rounded mitts */
-  if (ph) {
-    g.push(part(Cap(0.082, 0.3, 7), o.top, { x: -0.27, y: 0.88, rz: -0.1 }));
-    g.push(part(Sph(0.096, 8, 6), skin, { x: -0.295, y: 0.64 }));
+  g.push(radialBody(o));
+  if (ph) {                                                 // bent texting arm + phone
     g.push(part(Cap(0.08, 0.16, 8), o.top, { x: 0.25, y: 1.0, rz: -0.2 }));
     g.push(part(Cap(0.068, 0.16, 8), o.top, { rx: -1.05, x: 0.17, y: 1.06, z: 0.12 }));
-    g.push(part(Sph(0.088, 9, 7), skin, { x: 0.13, y: 1.09, z: 0.2 }));
+    g.push(part(Sph(0.088, 9, 7), o.top, { x: 0.14, y: 1.04, z: 0.18 }));   // cradles the lower bezel, stays behind the screen
     g.push(part(Box(0.13, 0.2, 0.022), 0.06, { rx: -0.5, x: 0.115, y: 1.14, z: 0.235 }));
     g.push(part(Box(0.104, 0.168, 0.02), 0.97, { rx: -0.5, x: 0.115, y: 1.145, z: 0.245 }));   // bright screen
-  } else {
-    for (const s of [-1, 1]) {
-      g.push(part(Cap(0.082, 0.3, 7), o.top, { x: s * 0.27, y: 0.88, rz: s * -0.1 }));
-      g.push(part(Sph(0.096, 8, 6), skin, { x: s * 0.295, y: 0.64 }));
-    }
   }
-  /* head: big blank sphere with a slight neck gap */
-  const hy = 1.5;
-  g.push(part(Sph(0.265, 12, 9), skin, { y: hy, z: ph ? 0.04 : 0, sy: 1.03 }));
+  const hy = 1.5;                                           // head is part of radialBody; accessories sit on it
   if (o.hat === 'cap') {
-    g.push(part(Sph(0.272, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.42), 0.08, { rx: ph ? 0.18 : 0, y: hy + 0.05, z: ph ? 0.06 : 0 }));
+    g.push(part(Sph(0.288, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.42), 0.08, { rx: ph ? 0.18 : 0, y: hy + 0.05, z: ph ? 0.06 : 0 }));
     g.push(part(Box(0.3, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.2 : 0), y: hy + (ph ? 0.07 : 0.1), z: (ph ? 0.31 : 0.28) }));
   } else if (o.hat === 'brim') {
     g.push(part(Cyl(0.39, 0.39, 0.035, 12), 0.9, { y: hy + 0.14 }));
-    g.push(part(Sph(0.235, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.13 }));
+    g.push(part(Sph(0.247, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.13 }));
   } else if (o.hair !== undefined) {
-    g.push(part(Sph(0.277, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.15 : 0), y: hy + 0.02, z: ph ? 0.02 : -0.02 }));
+    g.push(part(Sph(0.293, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.15 : 0), y: hy + 0.02, z: ph ? 0.02 : -0.02 }));
     if (o.bun) g.push(part(Sph(0.1, 8, 6), o.hair, { y: hy + 0.24, z: -0.15 }));
     if (o.pony) g.push(part(Cap(0.065, 0.22, 7), o.hair, { y: hy + 0.02, z: -0.28, rx: 0.55 }));
   }
   if (o.backpack) g.push(part(Box(0.26, 0.32, 0.13), 0.1, { y: 0.98, z: -0.3 }));
   if (o.cane) g.push(part(Cyl(0.028, 0.028, 0.85, 6), 0.25, { x: 0.34, y: 0.43, z: 0.07, rz: 0.09 }));
   const geo = mergeGeoms(g);
-  blobNormals(geo, personCore, 0.62);
+  blobNormals(geo, personCore, 0.35);
   return geo;
 }
 const peopleVariants = [
