@@ -89,7 +89,7 @@ const PRESETS = {
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
              people: 120, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
-             people: 88,  cars: 20, parked: 28, birds: 24, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+             people: 88,  cars: 18, parked: 28, birds: 24, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -277,11 +277,21 @@ function addShape(g, lx, y, lz, sx, sy, sz, c, win, ry = 0, rx = 0, rz = 0) {
     sx, sy, sz, ry: ry - curD.th, rx, rz, c, win, wph: curPhase,
   });
 }
+/* ribbon-slab modules (stacked floor plates with recessed glass bands) */
+const ribbons = [];
+function addRibbon(lx, y, lz, w, hMod, d, tint, ry = 0) {
+  ribbons.push({
+    x: curD.gx + lx * curD.cos - lz * curD.sin, y, z: curD.gz + lx * curD.sin + lz * curD.cos,
+    sx: w, sy: hMod, sz: d, ry: ry - curD.th, tint,
+  });
+}
 const addBox = (x, y, z, sx, sy, sz, c, ry = 0, rx = 0, rz = 0) => addShape(0, x, y, z, sx, sy, sz, c, c, ry, rx, rz);
 
 /* discrete wall-value steps (spatially varied dark-on-white fabric), one uniform
    dark window family, light trim — the architecture-diagram value plan */
 const WALL_STEPS = [0.4, 0.5, 0.6, 0.7];
+const FLOOR = 3.1;
+const q3 = h => Math.max(FLOOR, Math.round(h / FLOOR) * FLOOR);   // everything sits on the floor module
 function facadeTint() {
   if (R() < 0.055) return rr(0.28, 0.34);                  // rare near-dark anchors
   return WALL_STEPS[(R() * 4) | 0] + rr(-0.025, 0.025);
@@ -396,7 +406,24 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       roofKit(bx, h, bz, w, d, c, false);
     }
   } else if (h < 85) {                                      // mid-rise: base + setback
-    const baseH = h * rr(0.55, 0.72);
+    const mr = R();
+    if (mr < 0.2) {                                         // ribbon mid-rise: stacked floor plates
+      const n = Math.max(2, Math.round(h / 12.4));
+      for (let i = 0; i < n; i++) addRibbon(bx, i * 12.4, bz, w, 12.4, d, c);
+      addBox(bx, n * 12.4, bz, w * 1.06, 0.8, d * 1.06, Math.min(0.92, c * 1.25 + 0.08));
+      roofKit(bx, n * 12.4 + 0.8, bz, w * 0.96, d * 0.96, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
+    }
+    if (mr < 0.38) {                                        // L-plan: two interlocking volumes
+      addShape(0, bx - w * 0.14, 0, bz, w * 0.72, h, d, c, win);
+      addShape(0, bx + w * 0.22, 0, bz + d * 0.18, w * 0.56, q3(h * rr(0.55, 0.8)), d * 0.64, c, win);
+      cornice(bx - w * 0.14, h, bz, w * 0.72, d, c);
+      roofKit(bx - w * 0.14, h, bz, w * 0.72, d, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
+    }
+    const baseH = q3(h * rr(0.55, 0.72));
     addShape(0, bx, 0, bz, w, baseH, d, c, win);
     cornice(bx, baseH, bz, w, d, c);
     const s1 = rr(0.68, 0.82);
@@ -407,8 +434,8 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
     else { cornice(bx, h, bz, w * s1, d * s1, c); roofKit(bx, h, bz, w * s1, d * s1, c, false); }
     if (h > 55 && R() < 0.4) finRow(bx, bz, w, d, baseH * 0.9, c);
   } else {                                                  // tower: podium + shaft + crown
-    const round = !opts.landmark && R() < 0.07;
-    const podH = rr(9, 16);
+    const round = !opts.landmark && R() < 0.06;
+    const podH = q3(rr(9, 16));
     addShape(0, bx, 0, bz, w, podH, d, c, win);
     cornice(bx, podH, bz, w, d, c);
     if (R() < 0.5) parapet(bx, podH, bz, w, d, c);           // podium terrace ledge
@@ -419,22 +446,38 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       const dh = rr(4, 8);
       addShape(4, bx, h, bz, rad * 0.75, dh, rad * 0.75, c, win);
       addShape(2, bx, h + dh, bz, rad * 1.1, rr(4, 7), rad * 1.1, c * 0.85, c * 0.85);
-    } else if (R() < 0.16) {                                 // layer-cake slab tower (stacked plates)
+    } else if (R() < 0.13) {                                 // layer-cake slab tower (stacked plates)
       let alt = false;
-      for (let y0 = podH; y0 < h - 1; y0 += 3.2) {
-        addShape(0, bx, y0, bz, tw * (alt ? 1 : 0.91), Math.min(3.3, h - y0), td * (alt ? 1 : 0.91), c, win);
+      for (let y0 = podH; y0 < h - 1; y0 += FLOOR) {
+        addShape(0, bx, y0, bz, tw * (alt ? 1 : 0.91), Math.min(FLOOR + 0.05, h - y0), td * (alt ? 1 : 0.91), c, win);
         alt = !alt;
       }
       cornice(bx, h, bz, tw, td, c);
       roofKit(bx, h, bz, tw, td, c, false);
       if (dress) storefronts(bx, bz, w, d, c);
       return;
+    } else if (R() < 0.3) {                                  // ribbon tower: plates + recessed glass bands
+      const shaftH = Math.max(12.4, Math.round((h - podH) / 12.4) * 12.4);
+      for (let i = 0; i < shaftH / 12.4; i++) addRibbon(bx, podH + i * 12.4, bz, tw, 12.4, td, c);
+      addBox(bx, podH + shaftH, bz, tw * 1.07, 0.8, td * 1.07, Math.min(0.92, c * 1.25 + 0.08));   // fascia lid
+      roofKit(bx, podH + shaftH + 0.8, bz, tw * 0.94, td * 0.94, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
+    } else if (R() < 0.22) {                                 // chamfered-plan tower: solid corner piers
+      const t1c = q3(h * rr(0.6, 0.75));
+      addShape(5, bx, podH, bz, tw * 1.04, t1c - podH, td * 1.04, c, win);
+      cornice(bx, t1c, bz, tw * 0.9, td * 0.9, c);
+      addShape(5, bx, t1c, bz, tw * 0.74, q3(h - t1c), td * 0.74, c, win);
+      addShape(5, bx, h, bz, tw * 0.4, rr(3, 6), td * 0.4, c * 0.92, c * 0.92);
+      addBox(bx, h + 4, bz, 0.7, rr(8, 18), 0.7, 0.35);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
     } else {
-      const t1 = h * rr(0.55, 0.66);
+      const t1 = q3(h * rr(0.55, 0.66));
       addShape(0, bx, podH, bz, tw, t1 - podH, td, c, win);
       cornice(bx, t1, bz, tw, td, c);
       const s2 = rr(0.72, 0.85);
-      const t2h = h * rr(0.22, 0.3);
+      const t2h = q3(h * rr(0.22, 0.3));
       addShape(0, bx, t1, bz, tw * s2, t2h, td * s2, c, win);
       const topY = t1 + t2h, r = R();                        // crowns sit exactly on the tier below
       if (r < 0.3) {                                         // spired crown
@@ -496,11 +539,14 @@ function storefronts(bx, bz, w, d, c) {
   for (let z0 = bz - len / 2 + 0.3; z0 <= bz + len / 2; z0 += 3.8)           // piers
     addBox(face + dir * 0.13, 0.4, z0, 0.32, 2.5, 0.55, pier);
   addBox(face + dir * 0.12, 2.9, bz, 0.34, 0.4, len + 0.4, pier);            // fascia over the glass
-  for (let z0 = bz - d / 2 + 2.4; z0 < bz + d / 2 - 1.6; z0 += rr(5, 7.6)) {
+  const nd = Math.max(1, Math.round((d - 4) / 5.1));        // doors snap to the bay grid
+  for (let i = 0; i < nd; i++) {
+    const z0 = bz + (i - (nd - 1) / 2) * 5.1;
+    if (z0 < bz - d / 2 + 1.6 || z0 > bz + d / 2 - 1.6) continue;
     if (MOBILE && bx > 0 && z0 > 15 && z0 < 33) continue;   // clear mobile's resting frame
     addBox(face + dir * 0.18, 0, z0, 0.26, 2.45, 1.5, rr(0.1, 0.14));
     if (R() < 0.55)
-      addBox(face + dir * 1.0, 3.35, z0, 1.8, 0.09, 2.4, [0.1, 0.24, 0.42][(R() * 3) | 0], 0, 0, dir * -0.42);
+      addBox(face + dir * 0.95, 3.3, z0, 1.6, 0.09, 2.3, [0.1, 0.24, 0.42][(R() * 3) | 0], 0, 0, dir * -0.42);
   }
 }
 
@@ -556,6 +602,8 @@ for (const c of cells) {
   };
   /* the park: two hero blocks with pond, no buildings (ref-3 iconography) */
   if (c.d.hero && c.wcx > -44 && c.wcx < -10 && c.wcz > 80 && c.wcz < 162) continue;
+  /* reserved for the galleria block north of the park */
+  if (c.d.hero && c.wcx > -44 && c.wcx < -10 && c.wcz > 166 && c.wcz < 196) continue;
   if (edge) {                                               // island rim: dense low slabs
     addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.55, 0.8), D * rr(0.55, 0.8), clampH(cx, cz, rr(3.5, 9)), dressOpt);
     addBuilding(cx + rr(-4, 4), cz + rr(-4, 4), W * rr(0.3, 0.45), D * rr(0.3, 0.45), clampH(cx, cz, rr(3, 6.5)), dressOpt);
@@ -596,10 +644,28 @@ for (let wx = -300; wx <= 300; wx += 15) for (let wz = -600; wz <= 600; wz += 15
 }
 /* landmark supertall, upper-left of the canyon view (hero-local coords) */
 addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
+/* the galleria: interlocking retail volumes + rooftop drum + signboard + plaza (Carrefour-block homage) */
+{
+  setD(districts[0]);
+  curPhase = R();
+  const gx2 = -27, gz2 = 183;
+  addShape(0, gx2, 0, gz2, 30, 6.2, 26, 0.62, 0.16);                       // glazed podium
+  cornice(gx2, 6.2, gz2, 30, 26, 0.62);
+  addShape(0, gx2 - 6, 6.2, gz2 - 4, 14, 21.7, 13, 0.56, winToneFor(0.56));
+  addShape(0, gx2 + 6, 6.2, gz2 + 5, 12, 34.1, 12, 0.66, winToneFor(0.66));
+  addShape(0, gx2, 6.2, gz2 - 9, 10, 15.5, 8, 0.48, winToneFor(0.48));
+  cornice(gx2 - 6, 27.9, gz2 - 4, 14, 13, 0.56);
+  cornice(gx2 + 6, 40.3, gz2 + 5, 12, 12, 0.66);
+  addShape(4, gx2 + 6, 40.3, gz2 + 5, 3.4, 6.2, 3.4, 0.6, 0.6);            // rooftop drum
+  addShape(2, gx2 + 6, 46.5, gz2 + 5, 4.4, 2.6, 4.4, 0.52, 0.52);
+  addBox(gx2 + 12.2, 24.8, gz2 + 5, 0.45, 4.2, 9.5, 0.94);                 // blank signboard
+  addBox(gx2 + 12.5, 25.4, gz2 + 5, 0.25, 3, 8.2, 0.18);
+  roofKit(gx2 - 6, 27.9, gz2 - 4, 13, 12, 0.56, false);
+}
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 33 : 21;
+  const mstep = MOBILE ? 35 : 21;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
@@ -636,6 +702,15 @@ const unitGable = (() => {
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tris.flat()), 3));
   g.computeVertexNormals();
   return g;
+})();
+const unitChamfer = (() => {                                 // octagonal plan: chamfered corners
+  const cc = 0.16;
+  const pts = [[0.5 - cc, 0.5], [-(0.5 - cc), 0.5], [-0.5, 0.5 - cc], [-0.5, -(0.5 - cc)],
+               [-(0.5 - cc), -0.5], [0.5 - cc, -0.5], [0.5, -(0.5 - cc)], [0.5, 0.5 - cc]];
+  const sh = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], p[1])));
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 1, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2);
+  return flatNI(g);
 })();
 
 const cityMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, metalness: 0 });
@@ -679,19 +754,21 @@ cityMat.onBeforeCompile = shader => {
         vec2 awFw = fwidth( awCell );
         float awFade = 1.0 - smoothstep( 0.34, 0.7, max( awFw.x, awFw.y ) );
         float awHash = fract( sin( dot( floor( awCell ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
-        float awGate = awFade * awVert * step( 4.2, vAWp.y );
+        float awAxis = step( 0.92, max( abs( awNl.x ), abs( awNl.z ) ) );      // chamfer corners stay solid piers
+        float awRow = step( 1.95, floor( vAWp.y / 3.1 + 0.001 ) );             // windows start above the storefront zone
+        float awGate = awFade * awVert * awAxis * awRow;
         float awTone = mix( awBase, awBase * 0.74, awFrame * awGate * edgeIn );
         awTone = mix( awTone, awWin + ( awHash - 0.5 ) * 0.09, awPane * awGate * edgeIn );
-        float awFl = step( fract( awCell.y ), 0.05 );                // string courses wrap the corners
-        awTone = mix( awTone, min( 1.0, awBase * 1.15 + 0.05 ), awFl * awGate * 0.55 );
+        float awFl = step( fract( awCell.y ), 0.05 ) * step( 0.95, floor( vAWp.y / 3.1 + 0.001 ) );
+        awTone = mix( awTone, min( 1.0, awBase * 1.15 + 0.05 ), awFl * awFade * awVert * 0.55 );
         awTone *= 0.8 + 0.2 * smoothstep( 0.0, 15.0, vAWp.y );
         diffuseColor.rgb *= vec3( awTone );
       #endif
     `);
 };
 
-const cityGeos = [unitBox, unitTaper, unitPyr, unitGable, unitCylT];
-const perShape = [0, 0, 0, 0, 0];
+const cityGeos = [unitBox, unitTaper, unitPyr, unitGable, unitCylT, unitChamfer];
+const perShape = [0, 0, 0, 0, 0, 0];
 for (const b of inst) perShape[b.g]++;
 const cityMeshes = cityGeos.map((geo, gi) => {
   const m = new THREE.InstancedMesh(geo, cityMat, Math.max(perShape[gi], 1));
@@ -702,7 +779,7 @@ const cityMeshes = cityGeos.map((geo, gi) => {
   return m;
 });
 {
-  const slot = [0, 0, 0, 0, 0], D3 = new THREE.Object3D(), C = new THREE.Color();
+  const slot = [0, 0, 0, 0, 0, 0], D3 = new THREE.Object3D(), C = new THREE.Color();
   for (const b of inst) {
     const i = slot[b.g]++;
     D3.position.set(b.x, b.y, b.z);
@@ -712,6 +789,32 @@ const cityMeshes = cityGeos.map((geo, gi) => {
     cityMeshes[b.g].setMatrixAt(i, D3.matrix);
     cityMeshes[b.g].setColorAt(i, C.setRGB(b.c, b.win ?? b.c, b.wph ?? 0));
   }
+}
+
+/* ---- ribbon-slab facades: 4-floor module of plates + recessed glass bands ---- */
+{
+  const parts = [];
+  for (let f = 0; f < 4; f++) {
+    const y0 = f * 0.25;
+    parts.push(part(Box(0.9, 0.215, 0.9), 0.42, { y: y0 + 0.1075 }));
+    parts.push(part(Box(1.04, 0.035, 1.04), 1.0, { y: y0 + 0.2325 }));
+  }
+  const ribbonGeo = mergeGeoms(parts);
+  const ribbonMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88 });
+  const rm = new THREE.InstancedMesh(ribbonGeo, ribbonMat, Math.max(1, ribbons.length));
+  rm.count = Math.max(1, ribbons.length);
+  const D3 = new THREE.Object3D(), C = new THREE.Color();
+  ribbons.forEach((b, i) => {
+    D3.position.set(b.x, b.y, b.z);
+    D3.rotation.set(0, b.ry, 0);
+    D3.scale.set(b.sx, b.sy, b.sz);
+    D3.updateMatrix();
+    rm.setMatrixAt(i, D3.matrix);
+    rm.setColorAt(i, C.setScalar(b.tint));
+  });
+  rm.castShadow = P.shadows; rm.receiveShadow = P.shadows;
+  rm.frustumCulled = false;
+  scene.add(rm);
 }
 
 /* ---- water towers ---- */
@@ -1223,12 +1326,45 @@ function makeBus() {
   wheelsFor(g, 0.42, 1.0, [3.3, -3.3]);
   return mergeGeoms(g);
 }
-const vehicleGeos = [makeSedan(false), makeSedan(true), makeSUV(), makeVan(), makeTruck(), makeBus()];
+function makeHatch() {
+  const g = [];
+  g.push(part(Box(1.68, 0.52, 3.6), 1, { y: 0.58 }));
+  g.push(part(Box(1.54, 0.5, 1.95), 0.15, { y: 1.08, z: -0.45 }));
+  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.32, 1.6), 0.16, { x: s * 0.85, y: 1.08, z: -0.45 }));
+  carTrim(g, 0.84, 1.78, -1.78, 0.8);
+  wheelsFor(g, 0.31, 0.78, [1.1, -1.1]);
+  return mergeGeoms(g);
+}
+function makePickup() {
+  const g = [];
+  g.push(part(Box(1.86, 0.6, 5.0), 1, { y: 0.62 }));
+  g.push(part(Box(1.76, 0.85, 1.7), 1, { y: 1.1, z: 0.45 }));
+  g.push(part(Box(1.6, 0.45, 0.12), 0.15, { y: 1.5, z: 1.28, rx: 0.24 }));
+  for (const s of [-1, 1]) g.push(part(Box(0.09, 0.42, 2.15), 0.85, { x: s * 0.88, y: 1.12, z: -1.35 }));
+  g.push(part(Box(1.85, 0.42, 0.09), 0.85, { y: 1.12, z: -2.42 }));
+  g.push(part(Box(1.66, 0.06, 2.1), 0.3, { y: 0.95, z: -1.35 }));
+  carTrim(g, 0.93, 2.48, -2.48, 0.95);
+  wheelsFor(g, 0.36, 0.9, [1.6, -1.6]);
+  return mergeGeoms(g);
+}
+function makeCoupe() {
+  const g = [];
+  g.push(part(Box(1.72, 0.44, 4.0), 1, { y: 0.5 }));
+  g.push(part(Box(1.5, 0.38, 1.7), 0.15, { y: 0.9, z: -0.35 }));
+  carTrim(g, 0.86, 1.98, -1.98, 0.68);
+  wheelsFor(g, 0.31, 0.8, [1.25, -1.25]);
+  return mergeGeoms(g);
+}
+const vehicleGeos = [makeSedan(false), makeSedan(true), makeSUV(), makeVan(), makeTruck(), makeBus(), makeHatch(), makePickup(), makeCoupe()];
 const vehicleTints = [
   [0.9, 0.68, 0.45, 0.28, 0.14, 0.08], [0.93], [0.85, 0.6, 0.35, 0.18], [0.8, 0.55], [0.88], [0.55],
+  [0.85, 0.6, 0.4, 0.2], [0.9, 0.55, 0.3], [0.75, 0.45, 0.15, 0.06],
 ];
-const vehiclePick = () => { const r = R(); return r < 0.36 ? 0 : r < 0.52 ? 1 : r < 0.72 ? 2 : r < 0.84 ? 3 : r < 0.93 ? 4 : 5; };
-const carLen = [4.6, 4.6, 4.7, 5.2, 5.6, 10.4];
+const vehiclePick = () => {
+  const r = R();
+  return r < 0.2 ? 0 : r < 0.33 ? 1 : r < 0.48 ? 2 : r < 0.58 ? 3 : r < 0.65 ? 4 : r < 0.71 ? 5 : r < 0.83 ? 6 : r < 0.92 ? 7 : 8;
+};
+const carLen = [4.6, 4.6, 4.7, 5.2, 5.6, 10.4, 3.9, 5.2, 4.4];
 
 /* traffic lanes follow each district's own avenue directions */
 const lanes = [];
@@ -1278,11 +1414,13 @@ const parked = [];
     const side = R() < 0.5 ? 1 : -1, z = rr(-70, 190);
     if (Math.abs(z - HERO_ST) < 10 || Math.abs(z - STOP_LINE) < 7) continue;
     if (z > 48 && z < 64) continue;                          // keep the lateral center-stage clear
-    parked.push({ v: vehiclePick() % 4, x: side * 6.3, z, ry: side > 0 ? 0 : Math.PI, tint: vehicleTints[0][(R() * 6) | 0] });
+    const pv = [0, 1, 2, 3, 6, 8][(R() * 6) | 0];
+    parked.push({ v: pv, x: side * 6.3, z, ry: side > 0 ? 0 : Math.PI, tint: vehicleTints[pv][(R() * vehicleTints[pv].length) | 0] });
   }
   for (const zc of [-42, -2, 78]) for (let i = 0; i < 4; i++) {
     const side = R() < 0.5 ? 1 : -1;
-    parked.push({ v: vehiclePick() % 4, x: rr(16, 64) * (R() < 0.5 ? 1 : -1), z: zc + side * 2.9, ry: Math.PI / 2 + (side > 0 ? 0 : Math.PI), tint: vehicleTints[0][(R() * 6) | 0] });
+    const pv = [0, 2, 3, 6, 7, 8][(R() * 6) | 0];
+    parked.push({ v: pv, x: rr(16, 64) * (R() < 0.5 ? 1 : -1), z: zc + side * 2.9, ry: Math.PI / 2 + (side > 0 ? 0 : Math.PI), tint: vehicleTints[pv][(R() * vehicleTints[pv].length) | 0] });
   }
 }
 const perVehicle = vehicleGeos.map(() => 0);
@@ -1407,9 +1545,9 @@ const mistLayers = [];
   mx.fillStyle = grad; mx.fillRect(0, 0, 256, 256);
   const mtex = new THREE.CanvasTexture(mc);
   const defs = [
-    { y: 26, sx: 1560, sz: 940, o: 0.44 },
-    { y: 54, sx: 1340, sz: 800, o: 0.36 },
-    { y: 84, sx: 1120, sz: 680, o: 0.28 },
+    { y: 26, sx: 1760, sz: 1060, o: 0.56 },
+    { y: 54, sx: 1500, sz: 900, o: 0.46 },
+    { y: 84, sx: 1260, sz: 760, o: 0.36 },
   ];
   for (let i = 0; i < P.mist; i++) {
     const d = defs[i];
@@ -1546,8 +1684,8 @@ function tick() {
 
   if (!introDone) { introT += dt; if (introT > 1.8) introDone = true; }
   const iF = introDone ? 1 : lerp(0.7, 1, sstep(introT, 0.15, 1.8));
-  scene.fog.near = lerp(640, 50, sstep(p, 0.1, 0.85)) * iF;
-  scene.fog.far = lerp(1980, 430, sstep(p, 0.1, 0.85)) * lerp(0.8, 1, iF);
+  scene.fog.near = lerp(560, 50, sstep(p, 0.1, 0.85)) * iF;
+  scene.fog.far = lerp(1850, 430, sstep(p, 0.1, 0.85)) * lerp(0.8, 1, iF);
 
   if (P.shadows) {
     if (P.cloudShadows) { const on = p < 0.4; cloudMeshes.forEach(m => { m.castShadow = on; }); }
