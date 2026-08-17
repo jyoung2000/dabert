@@ -84,12 +84,12 @@ const tier = ['desktop', 'tablet', 'mobile'].includes(qs.get('quality')) ? qs.ge
 const MOBILE = tier === 'mobile';
 
 const PRESETS = {
-  desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048,
-             people: 165, cars: 24, parked: 34, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
-  tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048,
-             people: 120, cars: 18, parked: 26, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
-  mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024,
-             people: 88,  cars: 13, parked: 18, birds: 24, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+  desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048, mist: 3,
+             people: 165, cars: 34, parked: 52, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
+  tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
+             people: 120, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
+  mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
+             people: 88,  cars: 20, parked: 28, birds: 24, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -207,7 +207,7 @@ const SIDE_AV = 5, SIDE_ST = 3.6;
 const bend = z => 18 * Math.sin(z * 0.0035);
 function halfWidth(z) {
   const t = Math.abs(z / 585); if (t >= 1) return 0;
-  const base = 240 * Math.pow(1 - Math.pow(t, 2.6), 1 / 2.6);
+  const base = 252 * Math.pow(1 - Math.pow(t, 2.6), 1 / 2.6);
   return base * (1 + 0.10 * Math.sin(z * 0.011 + 1.7) + 0.07 * Math.sin(z * 0.023 + 4.2) + 0.05 * Math.sin(z * 0.005 + 0.6));
 }
 const inside = (x, z) => Math.abs(x - bend(z)) < halfWidth(z);
@@ -409,15 +409,27 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
     if (round) {
       const rad = Math.min(tw, td) * 0.52;
       addShape(4, bx, podH, bz, rad, h - podH, rad, c, win);
-      addShape(4, bx, h, bz, rad * 0.75, rr(4, 8), rad * 0.75, c, win);
-      addShape(2, bx, h + 5, bz, rad * 1.1, rr(4, 7), rad * 1.1, c * 0.85, c * 0.85);
+      const dh = rr(4, 8);
+      addShape(4, bx, h, bz, rad * 0.75, dh, rad * 0.75, c, win);
+      addShape(2, bx, h + dh, bz, rad * 1.1, rr(4, 7), rad * 1.1, c * 0.85, c * 0.85);
+    } else if (R() < 0.16) {                                 // layer-cake slab tower (stacked plates)
+      let alt = false;
+      for (let y0 = podH; y0 < h - 1; y0 += 3.2) {
+        addShape(0, bx, y0, bz, tw * (alt ? 1 : 0.91), Math.min(3.3, h - y0), td * (alt ? 1 : 0.91), c, win);
+        alt = !alt;
+      }
+      cornice(bx, h, bz, tw, td, c);
+      roofKit(bx, h, bz, tw, td, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
     } else {
       const t1 = h * rr(0.55, 0.66);
       addShape(0, bx, podH, bz, tw, t1 - podH, td, c, win);
       cornice(bx, t1, bz, tw, td, c);
       const s2 = rr(0.72, 0.85);
-      addShape(0, bx, t1, bz, tw * s2, h * rr(0.22, 0.3), td * s2, c, win);
-      const topY = t1 + h * 0.26, r = R();
+      const t2h = h * rr(0.22, 0.3);
+      addShape(0, bx, t1, bz, tw * s2, t2h, td * s2, c, win);
+      const topY = t1 + t2h, r = R();                        // crowns sit exactly on the tier below
       if (r < 0.3) {                                         // spired crown
         addShape(2, bx, topY, bz, tw * s2 * 0.92, rr(6, 14), td * s2 * 0.92, c * 0.86, c * 0.86);
         addBox(bx, topY + 8, bz, 0.8, rr(10, 22), 0.8, 0.35);
@@ -533,42 +545,50 @@ for (const c of cells) {
       h = Math.max(h, (48 + R() * 62) * (0.5 + 0.5 * sstep(wz, -12, 50)));
     h = corridorClamp(wx, wz, h);
     h = Math.max(3.1, Math.round(h / 3.1) * 3.1);           // quantize to the floor module
-    return Math.min(h, 245);
+    return Math.min(h, 238);
   };
-  if (edge) {                                               // island rim: always low slabs
+  /* the park: two hero blocks with pond, no buildings (ref-3 iconography) */
+  if (c.d.hero && c.wcx > -44 && c.wcx < -10 && c.wcz > 80 && c.wcz < 162) continue;
+  if (edge) {                                               // island rim: dense low slabs
     addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.55, 0.8), D * rr(0.55, 0.8), clampH(cx, cz, rr(3.5, 9)), dressOpt);
-    if (R() < 0.5) addBuilding(cx + rr(-4, 4), cz + rr(-4, 4), W * rr(0.3, 0.45), D * rr(0.3, 0.45), clampH(cx, cz, rr(3, 6.5)), dressOpt);
+    addBuilding(cx + rr(-4, 4), cz + rr(-4, 4), W * rr(0.3, 0.45), D * rr(0.3, 0.45), clampH(cx, cz, rr(3, 6.5)), dressOpt);
+    if (R() < 0.5) addBuilding(cx + rr(-6, 6), cz + rr(-6, 6), W * rr(0.22, 0.34), D * rr(0.22, 0.34), clampH(cx, cz, rr(3, 7)), dressOpt);
     continue;
   }
+  /* skyline shaping: midtown + downtown height clusters over the even tower spread */
+  const clus = 1 + 0.42 * Math.exp(-((c.wcz - 120) ** 2) / (2 * 130 * 130) - (c.wcx ** 2) / (2 * 170 * 170))
+             + 0.3 * Math.exp(-((c.wcz + 420) ** 2) / (2 * 120 * 120) - (c.wcx ** 2) / (2 * 140 * 140));
   /* low-frequency height field: neighbors correlate, no white-noise skyline */
   const hf = 0.78 + 0.5 * (0.5 + 0.5 * Math.sin(c.wcx * 0.011 + 1.3) * Math.sin(c.wcz * 0.007 + 0.4));
   if (c.role === 'super') {
-    addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.62, 0.75), D * rr(0.62, 0.78), clampH(cx, cz, rr(150, 195)), dressOpt);
+    addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.62, 0.75), D * rr(0.62, 0.78), clampH(cx, cz, rr(150, 195) * clus), dressOpt);
   } else if (c.role === 'tower') {
-    addBuilding(cx + rr(-2, 2) - W / 5, cz + rr(-1.5, 1.5), W * rr(0.44, 0.55), D * rr(0.62, 0.78), clampH(cx, cz, rr(78, 160)), dressOpt);
-    addBuilding(cx + W / 3.6, cz + rr(-2, 2), W * rr(0.26, 0.34), D * rr(0.5, 0.7), clampH(cx, cz, rr(16, 40) * hf), dressOpt);
+    addBuilding(cx + rr(-2, 2) - W / 5, cz + rr(-1.5, 1.5), W * rr(0.44, 0.55), D * rr(0.62, 0.78), clampH(cx, cz, rr(78, 155) * clus), dressOpt);
+    addBuilding(cx + W / 3.6, cz + rr(-2, 2), W * rr(0.26, 0.34), D * rr(0.5, 0.7), clampH(cx, cz, rr(16, 42) * hf), dressOpt);
+    addBuilding(cx + W / 3.6, cz + (R() < 0.5 ? -1 : 1) * D / 3.2, W * rr(0.2, 0.28), D * rr(0.24, 0.32), clampH(cx, cz, rr(10, 26) * hf), dressOpt);
   } else {
     const r = R();
-    if (r < 0.34) {
-      addBuilding(cx + rr(-1.5, 1.5), cz + rr(-1.5, 1.5), W * rr(0.66, 0.8), D * rr(0.68, 0.82), clampH(cx, cz, rr(14, 46) * hf), dressOpt);
-    } else if (r < 0.72) {
+    if (r < 0.3) {
+      addBuilding(cx + rr(-1.5, 1.5), cz + rr(-1.5, 1.5), W * rr(0.7, 0.84), D * rr(0.72, 0.86), clampH(cx, cz, rr(16, 52) * hf), dressOpt);
+    } else if (r < 0.68) {
       for (const s of [-1, 1])
-        addBuilding(cx + s * W / 4 + rr(-1, 1), cz + rr(-1.5, 1.5), W * rr(0.34, 0.44), D * rr(0.62, 0.8), clampH(cx + s * W / 4, cz, rr(13, 48) * hf), dressOpt);
+        addBuilding(cx + s * W / 4 + rr(-1, 1), cz + rr(-1.5, 1.5), W * rr(0.38, 0.46), D * rr(0.66, 0.84), clampH(cx + s * W / 4, cz, rr(14, 52) * hf), dressOpt);
     } else {
       for (const sx of [-1, 1]) for (const sz of [-1, 1])
-        addBuilding(cx + sx * W / 4 + rr(-0.8, 0.8), cz + sz * D / 4 + rr(-0.8, 0.8), W * rr(0.32, 0.42), D * rr(0.34, 0.44), clampH(cx + sx * W / 4, cz + sz * D / 4, rr(10, 40) * hf), dressOpt);
+        addBuilding(cx + sx * W / 4 + rr(-0.8, 0.8), cz + sz * D / 4 + rr(-0.8, 0.8), W * rr(0.36, 0.46), D * rr(0.38, 0.46), clampH(cx + sx * W / 4, cz + sz * D / 4, rr(12, 44) * hf), dressOpt);
     }
   }
 }
 /* coverage sweep: any island ground not owned by a district still gets fabric */
 setD(districts[0]);
-for (let wx = -300; wx <= 300; wx += 19) for (let wz = -600; wz <= 600; wz += 19) {
+for (let wx = -300; wx <= 300; wx += 15) for (let wz = -600; wz <= 600; wz += 15) {
   if (!inside(wx, wz) || edgeDist(wx, wz) < 8 || claim(wx, wz)) continue;
-  const h = Math.max(3.1, Math.round(corridorClamp(wx, wz, rr(7, 26)) / 3.1) * 3.1);
-  addBuilding(wx + rr(-3, 3), wz + 2 + rr(-3, 3), rr(10, 17), rr(10, 17), h, { dress: false });
+  const h = Math.max(3.1, Math.round(corridorClamp(wx, wz, rr(7, 28)) / 3.1) * 3.1);
+  addBuilding(wx + rr(-3, 3), wz + 2 + rr(-3, 3), rr(9, 15), rr(9, 15), h, { dress: false });
+  if (R() < 0.5) addBuilding(wx + rr(-6, 6), wz + 2 + rr(-6, 6), rr(6, 11), rr(6, 11), Math.max(3.1, h * rr(0.4, 0.8)), { dress: false });
 }
 /* landmark supertall, upper-left of the canyon view (hero-local coords) */
-addBuilding(-67, 140, 18, 15, 235, { landmark: true, c: 0.3 });
+addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 
 /* ---- unit geometries + windowed city material ---- */
 const unitBox = new THREE.BoxGeometry(1, 1, 1); unitBox.translate(0, 0.5, 0);
@@ -612,11 +632,13 @@ cityMat.onBeforeCompile = shader => {
         float awFrame = step( 0.26, awF.x ) * step( awF.x, 0.74 ) * step( 0.22, awF.y ) * step( awF.y, 0.84 );
         float awPane = step( 0.32, awF.x ) * step( awF.x, 0.68 ) * step( 0.28, awF.y ) * step( awF.y, 0.78 );
         vec2 awFw = fwidth( awCell );
-        float awFade = 1.0 - smoothstep( 0.2, 0.48, max( awFw.x, awFw.y ) );
+        float awFade = 1.0 - smoothstep( 0.34, 0.7, max( awFw.x, awFw.y ) );   // crisp deep into the mid zoom
         float awHash = fract( sin( dot( floor( awCell ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
         float awGate = awFade * awVert * step( 4.2, vAWp.y );
         float awTone = mix( awBase, awBase * 0.74, awFrame * awGate );
         awTone = mix( awTone, awWin + ( awHash - 0.5 ) * 0.09, awPane * awGate );
+        float awFl = step( fract( awCell.y ), 0.05 );                          // string-course floor lines
+        awTone = mix( awTone, min( 1.0, awBase * 1.15 + 0.05 ), awFl * awGate * 0.55 );
         awTone *= 0.8 + 0.2 * smoothstep( 0.0, 15.0, vAWp.y );
         diffuseColor.rgb *= vec3( awTone );
       #endif
@@ -724,6 +746,16 @@ const GSIZE = 1700;
   ctx.fillStyle = g(0.945);
   ctx.fillRect(X(-AV_HALF - SIDE_AV), Z(-95), SIDE_AV * s, 310 * s);
   ctx.fillRect(X(AV_HALF), Z(-95), SIDE_AV * s, 310 * s);
+  /* the park: lawn plate, light path rim, and the pale pond */
+  ctx.fillStyle = g(0.952);
+  ctx.fillRect(X(-44), Z(80), 34 * s, 82 * s);
+  ctx.strokeStyle = g(0.985); ctx.lineWidth = Math.max(1, 1.6 * s);
+  ctx.strokeRect(X(-42), Z(83), 30 * s, 76 * s);
+  ctx.fillStyle = 'rgb(181,194,206)';
+  ctx.beginPath();
+  ctx.ellipse(X(-27), Z(118), 12.5 * s, 20 * s, 0.25, 0, 6.29);
+  ctx.fill();
+  ctx.strokeStyle = g(0.9); ctx.lineWidth = Math.max(1, 1.1 * s); ctx.stroke();
   ctx.restore();
 
   const tex = new THREE.CanvasTexture(cnv);
@@ -756,6 +788,18 @@ const GSIZE = 1700;
   paint.push(part(Box(13.2, 0.05, 0.5), 0.95, { x: 0, y: 0.05, z: STOP_LINE }));
   paint.push(part(Box(0.4, 0.14, 300), 0.88, { x: -AV_HALF, y: 0.07, z: 55 }));
   paint.push(part(Box(0.4, 0.14, 300), 0.88, { x: AV_HALF, y: 0.07, z: 55 }));
+  /* planter beds with hedges + corner bollards (the ref-5 sidewalk language) */
+  for (let z = -42; z <= 196; z += 24) {
+    if (Math.abs(z - HERO_ST) < 9 || (z > 40 && z < 66)) continue;
+    for (const sx of [-1, 1]) {
+      if (sx > 0 && z > 6 && z < 34) continue;               // mobile descent keep-out
+      paint.push(part(Box(1.15, 0.34, 2.9), 0.72, { x: sx * 10.4, y: 0.17, z }));
+      paint.push(part(Box(0.85, 0.52, 2.5), 0.55, { x: sx * 10.4, y: 0.55, z }));
+    }
+  }
+  for (const [bxq, bzq] of [[8.7, 27.6], [-8.7, 27.6], [8.7, 48.4], [-8.7, 48.4]])
+    for (let i = 0; i < 3; i++)
+      paint.push(part(Cyl(0.09, 0.09, 0.75, 8), 0.3, { x: bxq + (Math.abs(bxq) > 8 ? 0 : 0) + i * (bxq > 0 ? 0.9 : -0.9), y: 0.37, z: bzq }));
   const m = new THREE.Mesh(mergeGeoms(paint), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
   m.receiveShadow = P.shadows; m.frustumCulled = false;
   scene.add(m);
@@ -832,6 +876,11 @@ const treeGeo = mergeGeoms([
     if (Math.abs(z - HERO_ST) < 10) continue;
     if (R() < 0.8 && (z < 6 || z > 62)) spots.push([11.9, z + rr(-2, 2)]);   // gaps for the camera moves
     if (R() < 0.8 && (z < 42 || z > 62)) spots.push([-11.9, z + rr(-2, 2)]);
+  }
+  for (let i = 0; i < 18; i++) {                                             // park canopy
+    const px2 = rr(-41, -13), pz2 = rr(84, 158);
+    if (((px2 + 27) / 15) ** 2 + ((pz2 - 118) / 23) ** 2 < 1.15) continue;   // keep the pond clear
+    spots.push([px2, pz2]);
   }
   const trees = new THREE.InstancedMesh(treeGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }), spots.length);
   const D3 = new THREE.Object3D();
@@ -1102,7 +1151,7 @@ for (const d of districts) {
 }
 const cars = [];
 for (const ln of lanes) {
-  const n = Math.min(P.cars + (ln.hero ? 8 : 0), Math.floor((ln.smax - ln.smin) / 22));
+  const n = Math.min(P.cars + (ln.hero ? 12 : 0), Math.floor((ln.smax - ln.smin) / 16));
   for (let i = 0; i < n; i++) {
     const v = vehiclePick();
     cars.push({
@@ -1240,6 +1289,38 @@ const cloudMeshes = cloudGeos.map(geo => {
   cloudMeshes.forEach((m, vi) => { m.count = Math.max(counts[vi], 1); });
 }
 
+/* ---- the fog shroud: soft mist sheets pooling over the island at altitude ---- */
+const mistLayers = [];
+{
+  const mc = document.createElement('canvas'); mc.width = mc.height = 256;
+  const mx = mc.getContext('2d');
+  const grad = mx.createRadialGradient(128, 128, 20, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.62, 'rgba(255,255,255,0.85)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  mx.fillStyle = grad; mx.fillRect(0, 0, 256, 256);
+  const mtex = new THREE.CanvasTexture(mc);
+  const defs = [
+    { y: 26, sx: 1560, sz: 940, o: 0.44 },
+    { y: 54, sx: 1340, sz: 800, o: 0.36 },
+    { y: 84, sx: 1120, sz: 680, o: 0.28 },
+  ];
+  for (let i = 0; i < P.mist; i++) {
+    const d = defs[i];
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ map: mtex, transparent: true, opacity: d.o, depthWrite: false, fog: false })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(0, d.y, -30);
+    m.scale.set(d.sx, d.sz, 1);
+    m.renderOrder = 4;
+    m.userData.o = d.o;
+    scene.add(m);
+    mistLayers.push(m);
+  }
+}
+
 /* blob shadows when real shadows are off (mobile) */
 let blobMesh = null; const blobs = [];
 if (!P.shadows) {
@@ -1264,8 +1345,8 @@ if (!P.shadows) {
  * ================================================================== */
 const V3 = a => a.map(p => new THREE.Vector3(p[0], p[1], p[2]));
 const camPts = MOBILE
-  ? [[395, 548, -672], [325, 415, -425], [200, 265, -215], [95, 150, -110], [14, 94, -48], [6, 56, 2], [6.5, 20, 11], [9.2, 4.8, 17], [12.3, 1.74, 23]]
-  : [[395, 548, -672], [325, 415, -425], [200, 265, -215], [95, 150, -110], [14, 94, -48], [6, 56, 2], [5.5, 22, 10], [2.5, 9.5, 24], [-4, 4.6, 36], [-8.6, 2.6, 45], [-10.5, 1.68, 52]];
+  ? [[372, 516, -636], [318, 408, -418], [200, 265, -215], [95, 150, -110], [14, 94, -48], [6, 56, 2], [6.5, 20, 11], [9.2, 4.8, 17], [12.3, 1.74, 23]]
+  : [[372, 516, -636], [318, 408, -418], [200, 265, -215], [95, 150, -110], [14, 94, -48], [6, 56, 2], [5.5, 22, 10], [2.5, 9.5, 24], [-4, 4.6, 36], [-8.6, 2.6, 45], [-10.5, 1.68, 52]];
 const lookPts = MOBILE
   ? [[-40, 85, -30], [0, 55, 60], [10, 68, 80], [6, 52, 85], [5.5, 36, 95], [6.5, 14, 100], [7.4, 5.5, 100], [6.8, 3.5, 98], [6.4, 3.0, 96]]
   : [[-40, 85, -30], [0, 55, 60], [10, 68, 80], [6, 52, 85], [5.5, 36, 95], [6.5, 14, 100], [5.5, 8, 96], [3.5, 4.5, 82], [8, 2.8, 64], [11.5, 2.3, 56], [13, 2.2, 52]];
@@ -1506,6 +1587,12 @@ function tick() {
     planeMesh.setMatrixAt(i, D3.matrix);
   }
   planeMesh.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < mistLayers.length; i++) {              // the shroud thins as we descend into it
+    const m = mistLayers[i];
+    m.material.opacity = m.userData.o * (1 - sstep(p, 0.16, 0.4)) * (introDone ? 1 : lerp(1.15, 1, sstep(introT, 0.2, 1.8)));
+    m.position.x = Math.sin(t * 0.03 + i * 2.1) * 34;
+    m.position.z = -30 + Math.cos(t * 0.024 + i * 1.3) * 26;
+  }
   for (const cl of clouds) {
     cl.x += cl.drift * amb * dt;
     if (cl.x > 900) cl.x = -900;
