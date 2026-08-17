@@ -976,7 +976,7 @@ function addWalker(o) { walkers.push(Object.assign({ ph: R() * 9, scale: 1, tint
     const side = R() < 0.5 ? 1 : -1;
     const v = pickWalker();
     addWalker({
-      v, x: side * rr(9.0, 12.2),
+      v, x: side * (R() < 0.55 ? rr(8.8, 9.75) : rr(11.15, 12.2)),   // lanes flank the planter line
       z: (() => { const rv = R(); return rv < 0.28 ? rr(40, 72) : rv < 0.55 ? rr(25, 95) : rr(-55, 195); })(),
       dir: R() < 0.5 ? 1 : -1,
       s: v === 2 ? rr(0.55, 0.9) : rr(0.75, 1.5),
