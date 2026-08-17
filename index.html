@@ -85,11 +85,11 @@ const MOBILE = tier === 'mobile';
 
 const PRESETS = {
   desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048, mist: 3,
-             people: 165, cars: 34, parked: 52, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
+             people: 145, cars: 34, parked: 52, birds: 48, planes: 3, clouds: 18, dogs: 6, cloudShadows: true },
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
-             people: 120, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
+             people: 108, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
-             people: 88,  cars: 18, parked: 28, birds: 24, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+             people: 72,  cars: 18, parked: 24, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -735,7 +735,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 35 : 21;
+  const mstep = MOBILE ? 39 : 22;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
@@ -1157,41 +1157,53 @@ let goDot, stopDot;
  *  PEOPLE — soft lathe-bodied minimal figures, instanced             *
  * ================================================================== */
 const V2 = a => a.map(p => new THREE.Vector2(p[0], p[1]));
+/* the vinyl figure: big blank sphere head, soft belly torso, thick hanging
+   arms with mitt hands, chunky legs with forward foot bumps — per reference */
 function makePerson(o) {
   const g = [];
-  const lift = o.dress ? 0.14 : 0.22;
-  const prof = o.dress
-    ? [[0.27, 0], [0.235, 0.12], [0.19, 0.42], [0.17, 0.68], [0.14, 0.9], [0.075, 1.02], [0.02, 1.06]]
-    : [[0.16, 0], [0.2, 0.07], [0.21, 0.38], [0.195, 0.66], [0.165, 0.9], [0.09, 1.03], [0.02, 1.07]];
-  g.push(part(new THREE.LatheGeometry(V2(prof), 12), o.top, { y: lift }));
-  for (const s of [-1, 1]) g.push(part(Cap(0.052, 0.13, 7), o.legsC, { x: s * 0.075, y: 0.1 }));
-  if (o.hood) g.push(part(Sph(0.17, 10, 8), o.top, { y: 1.2, z: -0.11, sy: 0.82 }));
-  const hy = 1.36, ph = !!o.phone;
-  g.push(part(Sph(0.29, 12, 10), 0.97, { y: hy, z: ph ? 0.06 : 0, sy: 1.05 }));
-  for (const s of [-1, 1])
-    g.push(part(Sph(0.03, 6, 5), 0.16, { x: s * 0.1, y: ph ? 1.35 : 1.41, z: ph ? 0.32 : 0.262 }));
-  if (o.hat === 'cap') {
-    g.push(part(Sph(0.296, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.42), 0.08, { rx: ph ? 0.3 : 0, y: hy + 0.05, z: ph ? 0.1 : 0 }));
-    g.push(part(Box(0.3, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.32 : 0), y: hy + (ph ? 0.06 : 0.11), z: (ph ? 0.36 : 0.3) }));
-  } else if (o.hat === 'brim') {
-    g.push(part(Cyl(0.41, 0.41, 0.035, 12), 0.9, { y: hy + 0.16 }));
-    g.push(part(Sph(0.25, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.15 }));
-  } else if (o.hair !== undefined) {
-    g.push(part(Sph(0.302, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.34 : 0), y: hy + 0.03, z: ph ? 0.04 : -0.02 }));
-    if (o.bun) g.push(part(Sph(0.11, 8, 6), o.hair, { y: hy + 0.26, z: -0.16 }));
-    if (o.pony) g.push(part(Cap(0.07, 0.24, 7), o.hair, { y: hy + 0.04, z: -0.3, rx: 0.55 }));
+  const skin = 0.97, ph = !!o.phone;
+  /* legs + feet (short under a dress hem) */
+  for (const s of [-1, 1]) {
+    g.push(part(Cap(0.105, o.dress ? 0.16 : 0.34, 8), o.legsC, { x: s * 0.115, y: o.dress ? 0.27 : 0.37 }));
+    g.push(part(Sph(0.095, 8, 6), 0.22, { x: s * 0.115, y: 0.075, z: 0.09, sy: 0.72, sz: 1.3 }));
   }
+  /* torso: soft lathe, belly out, shoulders rounding into a neck pinch */
+  const prof = o.dress
+    ? [[0.305, 0.26], [0.27, 0.44], [0.235, 0.68], [0.235, 0.9], [0.2, 1.08], [0.145, 1.2], [0.05, 1.28]]
+    : [[0.15, 0.48], [0.215, 0.68], [0.243, 0.88], [0.222, 1.05], [0.165, 1.2], [0.05, 1.28]];
+  g.push(part(new THREE.LatheGeometry(V2(prof), 12), o.top, {}));
+  if (o.hood) g.push(part(Sph(0.19, 10, 8), o.top, { y: 1.34, z: -0.15, sy: 0.85 }));
+  /* arms: thick, hanging, ending in rounded mitts */
   if (ph) {
-    g.push(part(Cap(0.05, 0.2, 7), o.top, { x: -0.235, y: 0.9, rz: 0.13 }));
-    g.push(part(Cap(0.05, 0.12, 7), o.top, { x: 0.225, y: 0.96, rz: -0.2 }));
-    g.push(part(Cap(0.045, 0.15, 7), o.top, { rx: -1.02, x: 0.165, y: 1.08, z: 0.14 }));
+    g.push(part(Cap(0.082, 0.3, 7), o.top, { x: -0.27, y: 0.88, rz: -0.1 }));
+    g.push(part(Sph(0.096, 8, 6), skin, { x: -0.295, y: 0.64 }));
+    g.push(part(Cap(0.08, 0.16, 8), o.top, { x: 0.25, y: 1.0, rz: -0.2 }));
+    g.push(part(Cap(0.068, 0.16, 8), o.top, { rx: -1.05, x: 0.17, y: 1.06, z: 0.12 }));
+    g.push(part(Sph(0.088, 9, 7), skin, { x: 0.13, y: 1.09, z: 0.2 }));
     g.push(part(Box(0.13, 0.2, 0.022), 0.06, { rx: -0.5, x: 0.115, y: 1.14, z: 0.235 }));
     g.push(part(Box(0.104, 0.168, 0.02), 0.97, { rx: -0.5, x: 0.115, y: 1.145, z: 0.245 }));   // bright screen
   } else {
-    for (const s of [-1, 1]) g.push(part(Cap(0.05, 0.24, 7), o.top, { x: s * 0.24, y: 0.88, rz: s * -0.14 }));
+    for (const s of [-1, 1]) {
+      g.push(part(Cap(0.082, 0.3, 7), o.top, { x: s * 0.27, y: 0.88, rz: s * -0.1 }));
+      g.push(part(Sph(0.096, 8, 6), skin, { x: s * 0.295, y: 0.64 }));
+    }
   }
-  if (o.backpack) g.push(part(Box(0.24, 0.3, 0.12), 0.1, { y: 0.96, z: -0.25 }));
-  if (o.cane) g.push(part(Cyl(0.028, 0.028, 0.85, 6), 0.25, { x: 0.3, y: 0.43, z: 0.07, rz: 0.09 }));
+  /* head: big blank sphere with a slight neck gap */
+  const hy = 1.5;
+  g.push(part(Sph(0.265, 12, 9), skin, { y: hy, z: ph ? 0.07 : 0, sy: 1.03 }));
+  if (o.hat === 'cap') {
+    g.push(part(Sph(0.272, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.42), 0.08, { rx: ph ? 0.3 : 0, y: hy + 0.05, z: ph ? 0.1 : 0 }));
+    g.push(part(Box(0.3, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.32 : 0), y: hy + (ph ? 0.05 : 0.1), z: (ph ? 0.34 : 0.28) }));
+  } else if (o.hat === 'brim') {
+    g.push(part(Cyl(0.39, 0.39, 0.035, 12), 0.9, { y: hy + 0.14 }));
+    g.push(part(Sph(0.235, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.13 }));
+  } else if (o.hair !== undefined) {
+    g.push(part(Sph(0.277, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.34 : 0), y: hy + 0.03, z: ph ? 0.05 : -0.02 }));
+    if (o.bun) g.push(part(Sph(0.1, 8, 6), o.hair, { y: hy + 0.24, z: -0.15 }));
+    if (o.pony) g.push(part(Cap(0.065, 0.22, 7), o.hair, { y: hy + 0.02, z: -0.28, rx: 0.55 }));
+  }
+  if (o.backpack) g.push(part(Box(0.26, 0.32, 0.13), 0.1, { y: 0.98, z: -0.3 }));
+  if (o.cane) g.push(part(Cyl(0.028, 0.028, 0.85, 6), 0.25, { x: 0.34, y: 0.43, z: 0.07, rz: 0.09 }));
   return mergeGeoms(g);
 }
 const peopleVariants = [
@@ -1206,7 +1218,7 @@ const peopleVariants = [
 ];
 const WALK_SET = [0, 1, 2, 3, 4, 6, 7];
 const pickWalker = () => { const r = R(); return r < 0.15 ? 2 : WALK_SET[(R() * WALK_SET.length) | 0]; };
-const peopleMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 });
+const peopleMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 });   // soft vinyl sheen
 
 const walkers = [];
 function addWalker(o) { walkers.push(Object.assign({ ph: R() * 9, scale: 1, tint: 1, idle: false, axis: 'z' }, o)); }
@@ -1289,16 +1301,47 @@ screens.frustumCulled = false;
 scene.add(screens);
 phoneFolk.forEach((w, i) => { w.screenSlot = i; });
 
-/* dogs trotting beside a few walkers */
+/* dogs trotting beside a few walkers — same vinyl language as the people */
 const dogGeo = mergeGeoms([
-  part(Cap(0.09, 0.26, 8), 0.5, { y: 0.28, rx: Math.PI / 2 }),
-  part(Sph(0.105, 9, 7), 0.5, { y: 0.42, z: 0.24 }),
-  part(new THREE.ConeGeometry(0.035, 0.09, 6), 0.4, { x: 0.055, y: 0.53, z: 0.22 }),
-  part(new THREE.ConeGeometry(0.035, 0.09, 6), 0.4, { x: -0.055, y: 0.53, z: 0.22 }),
-  part(Cap(0.028, 0.12, 6), 0.45, { y: 0.34, z: -0.26, rx: -0.8 }),
-  part(Cap(0.026, 0.1, 6), 0.5, { x: 0.06, y: 0.1, z: 0.16 }), part(Cap(0.026, 0.1, 6), 0.5, { x: -0.06, y: 0.1, z: 0.16 }),
-  part(Cap(0.026, 0.1, 6), 0.5, { x: 0.06, y: 0.1, z: -0.13 }), part(Cap(0.026, 0.1, 6), 0.5, { x: -0.06, y: 0.1, z: -0.13 }),
+  part(Cap(0.115, 0.24, 9), 0.94, { y: 0.34, rx: Math.PI / 2 }),                    // soft body
+  part(Sph(0.15, 10, 8), 0.94, { y: 0.54, z: 0.24 }),                               // big round head
+  part(Sph(0.075, 9, 7), 0.9, { y: 0.47, z: 0.37, sz: 1.15 }),                      // muzzle bump
+  part(Sph(0.052, 8, 6), 0.85, { x: 0.105, y: 0.63, z: 0.19, sy: 1.5, sz: 0.7 }),   // floppy ears
+  part(Sph(0.052, 8, 6), 0.85, { x: -0.105, y: 0.63, z: 0.19, sy: 1.5, sz: 0.7 }),
+  part(Cap(0.038, 0.11, 7), 0.94, { y: 0.42, z: -0.3, rx: -0.9 }),                  // tail stub
+  part(Cap(0.048, 0.09, 7), 0.94, { x: 0.075, y: 0.12, z: 0.16 }), part(Cap(0.048, 0.09, 7), 0.94, { x: -0.075, y: 0.12, z: 0.16 }),
+  part(Cap(0.048, 0.09, 7), 0.94, { x: 0.075, y: 0.12, z: -0.14 }), part(Cap(0.048, 0.09, 7), 0.94, { x: -0.075, y: 0.12, z: -0.14 }),
 ]);
+/* cats — smaller, pointed ears, upright curled tail; some wander, some sit */
+const catGeo = mergeGeoms([
+  part(Cap(0.082, 0.18, 9), 0.94, { y: 0.24, rx: Math.PI / 2 }),
+  part(Sph(0.105, 10, 8), 0.94, { y: 0.38, z: 0.17 }),
+  part(Sph(0.045, 8, 6), 0.9, { y: 0.345, z: 0.26, sz: 1.1 }),
+  part(new THREE.ConeGeometry(0.038, 0.085, 5), 0.88, { x: 0.058, y: 0.49, z: 0.15 }),
+  part(new THREE.ConeGeometry(0.038, 0.085, 5), 0.88, { x: -0.058, y: 0.49, z: 0.15 }),
+  part(Cap(0.026, 0.14, 7), 0.94, { y: 0.32, z: -0.24, rx: -1.25 }),                // tail up
+  part(Sph(0.032, 7, 5), 0.94, { y: 0.44, z: -0.27 }),                              // tail curl tip
+  part(Cap(0.035, 0.07, 7), 0.94, { x: 0.052, y: 0.09, z: 0.11 }), part(Cap(0.035, 0.07, 7), 0.94, { x: -0.052, y: 0.09, z: 0.11 }),
+  part(Cap(0.035, 0.07, 7), 0.94, { x: 0.052, y: 0.09, z: -0.1 }), part(Cap(0.035, 0.07, 7), 0.94, { x: -0.052, y: 0.09, z: -0.1 }),
+]);
+const cats = [];
+{
+  const defs = [
+    { x: 11.45, z: 5, dir: 1, s: 0.45, sit: false }, { x: -11.4, z: 70, dir: -1, s: 0.38, sit: false },
+    { x: 11.5, z: 120, dir: -1, s: 0.5, sit: false },
+    { x: 10.9, z: -18.5, sit: true, ry: 2.4 }, { x: -10.95, z: 36.2, sit: true, ry: -0.7 },
+  ];
+  const mesh = new THREE.InstancedMesh(catGeo, peopleMat, defs.length);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.castShadow = P.shadows; mesh.frustumCulled = false;
+  scene.add(mesh);
+  const C = new THREE.Color();
+  defs.forEach((d, i) => {
+    cats.push({ ...d, mesh, slot: i, ph: R() * 9 });
+    mesh.setColorAt(i, C.setScalar([0.12, 0.55, 0.92, 0.3, 0.85][i % 5]));
+  });
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+}
 const dogs = [];
 {
   const owners = walkers.filter(w => !w.idle && w.axis === 'z' && w.v !== 2).slice(0, P.dogs);
@@ -1896,6 +1939,19 @@ function tick() {
       d.mesh.setMatrixAt(d.slot, D3.matrix);
     }
     if (dogs.length) { dogs[0].mesh.instanceMatrix.needsUpdate = true; }
+    for (const ct of cats) {
+      if (!ct.sit) {
+        ct.z += ct.dir * ct.s * dt;
+        if (ct.z > 150 || ct.z < -40) ct.dir *= -1;
+      }
+      const wob = ct.sit ? Math.sin(t * 0.8 + ct.ph) * 0.01 : Math.abs(Math.sin(t * 7 + ct.ph)) * 0.025;
+      D3.position.set(ct.x, wob, ct.z);
+      D3.rotation.set(0, ct.sit ? ct.ry : (ct.dir > 0 ? 0 : Math.PI), 0);
+      ct.sit ? D3.scale.set(1, 0.92, 0.82) : D3.scale.setScalar(1);
+      D3.updateMatrix();
+      ct.mesh.setMatrixAt(ct.slot, D3.matrix);
+    }
+    if (cats.length) { cats[0].mesh.instanceMatrix.needsUpdate = true; }
   }
 
   /* ---- birds / planes / clouds ---- */
