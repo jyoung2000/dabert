@@ -13,7 +13,8 @@ Scroll to descend: aerial island → cloud layer → rooftop skim → avenue can
 
 - One self-contained `index.html` (~2,000 lines): procedural city, no downloaded assets
 - Rotated street-grid districts, rivers, bridges, outer boroughs, a park with a pond
-- ~33 building archetypes (ribbon-slab, chamfered, twin-with-skybridge, terraced, deco setback, and more) built from instanced unit shapes with a procedural window shader
+- 36+ building archetypes (ribbon-slab, chamfered, twin-with-skybridge, terraced, deco setback, zigzag slab, H-plan pre-war, framed dark-glass tower, and more) built from instanced unit shapes
+- Four procedural facade languages — punched masonry, pier-and-spandrel strips, horizontal ribbon, curtain wall — with deep-set window reveals, corner quoins, loggia crowns, and radio masts
 - 12 vehicle types in flowing traffic, soft vinyl-toy pedestrians with phones, a working intersection
 - Device-tier presets: ~45 draw calls / <500k triangles on mobile
 

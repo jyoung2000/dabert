@@ -89,7 +89,7 @@ const PRESETS = {
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
              people: 108, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
-             people: 62,  cars: 18, parked: 21, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+             people: 59,  cars: 18, parked: 21, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -354,6 +354,11 @@ function roofKit(bx, y, bz, w, d, c, industrial) {
     addShape(2, ux, y + 1.8, uz, 1.9, 0.6, 1.9, 0.93, 0.93);
     const [wx, wz] = wOf(bx, bz);
     terraceSpots.push([wx, y, wz]);
+  } else if (area > 85 && rb < 0.34) {                       // radio mast with guy stubs
+    const mh = rr(9, 16), mx = bx + rr(-0.2, 0.2) * w, mz = bz + rr(-0.2, 0.2) * d;
+    addBox(mx, y, mz, 0.5, mh, 0.5, 0.32);
+    addBox(mx, y + mh, mz, 0.18, mh * 0.45, 0.18, 0.26);
+    for (const s of [-1, 1]) addBox(mx + s * 0.9, y + mh * 0.3, mz, 0.1, mh * 0.32, 0.1, 0.3);
   }
   for (let i = 0, n = 1 + (R() * 3 | 0); i < n; i++)         // vent pipes
     addShape(4, bx + rr(-0.33, 0.33) * w, y, bz + rr(-0.33, 0.33) * d, rr(0.15, 0.28), rr(0.7, 1.8), rr(0.15, 0.28), c * 0.8, c * 0.8);
@@ -368,7 +373,12 @@ function roofKit(bx, y, bz, w, d, c, industrial) {
 
 /* One building: podium/tower massing, varied roofs, cornices, fins. */
 function addBuilding(bx, bz, w, d, h, opts = {}) {
-  curPhase = R();
+  /* facade language by scale: towers favor pier-and-spandrel strips and
+     curtain wall, mid-rises mix in ribbon bands, low fabric stays punched */
+  const styR = R();
+  curPhase = 0.25 * (h >= 85 ? (styR < 0.34 ? 1 : styR < 0.58 ? 3 : styR < 0.8 ? 0 : 2)
+                   : h >= 32 ? (styR < 0.24 ? 1 : styR < 0.4 ? 2 : styR < 0.52 ? 3 : 0)
+                   : h >= 10 ? (styR < 0.1 ? 2 : styR < 0.18 ? 1 : 0) : 0);
   const c = opts.c ?? facadeTint();
   const win = winToneFor(c);
   const dress = opts.dress ?? (Math.abs(bx) < 46 && bz > -70 && bz < 220);
@@ -430,7 +440,7 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       if (dress) storefronts(bx, bz, w, d, c);
       return;
     }
-    if (mr < 0.38) {                                        // L-plan: two interlocking volumes
+    if (mr < 0.31) {                                        // L-plan: two interlocking volumes
       addShape(0, bx - w * 0.14, 0, bz, w * 0.72, h, d, c, win);
       addShape(0, bx + w * 0.22, 0, bz + d * 0.18, w * 0.56, q3(h * rr(0.55, 0.8)), d * 0.64, c, win);
       cornice(bx - w * 0.14, h, bz, w * 0.72, d, c);
@@ -438,7 +448,19 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       if (dress) storefronts(bx, bz, w, d, c);
       return;
     }
-    if (mr < 0.48) {                                        // terraced ziggurat stepping to the street
+    if (mr < 0.42) {                                        // H-plan pre-war block: paired wings + light wells
+      const hh = q3(h);
+      addShape(0, bx - w * 0.36, 0, bz, w * 0.28, hh, d, c, win);
+      addShape(0, bx + w * 0.36, 0, bz, w * 0.28, hh, d, c, win);
+      addShape(0, bx, 0, bz, w * 0.5, q3(hh * rr(0.78, 0.94)), d * 0.44, c, win);
+      cornice(bx - w * 0.36, hh, bz, w * 0.28, d, c);
+      cornice(bx + w * 0.36, hh, bz, w * 0.28, d, c);
+      roofKit(bx - w * 0.36, hh, bz, w * 0.28, d, c, false);
+      roofKit(bx + w * 0.36, hh, bz, w * 0.28, d, c, false);
+      if (dress) { storefronts(bx - w * 0.36, bz, w * 0.28, d, c); storefronts(bx + w * 0.36, bz, w * 0.28, d, c); }
+      return;
+    }
+    if (mr < 0.5) {                                         // terraced ziggurat stepping to the street
       const steps = 3 + (R() * 2 | 0), offx = bx > 0 ? 1 : -1, sw = w / steps;
       for (let i = 0; i < steps; i++) {
         const sh2 = q3(h * (i + 1) / steps);
@@ -449,7 +471,7 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       if (dress) storefronts(bx, bz, w, d, c);
       return;
     }
-    if (mr < 0.55) {                                        // glass atrium block: light curtain grid
+    if (mr < 0.57) {                                        // glass atrium block: light curtain grid
       const hh = q3(h * rr(0.7, 0.95));
       addShape(0, bx, 0, bz, w * 0.8, hh, d * 0.8, c, Math.min(0.95, c + 0.3));
       addBox(bx, hh, bz, w * 0.86, 0.7, d * 0.86, Math.min(0.92, c * 1.25 + 0.08));
@@ -465,7 +487,17 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
     const r = R();
     if (r < 0.28) addShape(2, bx, h, bz, w * s1 * 0.9, rr(3, 6), d * s1 * 0.9, c * 0.88, c * 0.88);
     else if (r < 0.5) addShape(1, bx, h, bz, w * s1 * 0.94, rr(2.5, 4.5), d * s1 * 0.94, c, win);
-    else { cornice(bx, h, bz, w * s1, d * s1, c); roofKit(bx, h, bz, w * s1, d * s1, c, false); }
+    else {
+      cornice(bx, h, bz, w * s1, d * s1, c);
+      if (R() < 0.32) {                                     // recessed loggia crown: posts under a floating lid
+        const lw = w * s1 * 0.92, ld = d * s1 * 0.8;
+        addShape(0, bx, h, bz, lw * 0.9, FLOOR, ld * 0.6, c, Math.min(0.9, c + 0.26));
+        const nP = Math.max(3, Math.min(6, Math.round(lw / 3.4)));
+        for (let i = 0; i < nP; i++)
+          addBox(bx - lw / 2 + (i + 0.5) * (lw / nP), h, bz + ld * 0.37, 0.34, FLOOR, 0.34, Math.min(0.95, c * 1.2 + 0.06));
+        addBox(bx, h + FLOOR, bz, lw + 0.5, 0.45, ld + 0.9, Math.min(0.92, c * 1.25 + 0.08));
+      } else roofKit(bx, h, bz, w * s1, d * s1, c, false);
+    }
     if (h > 55 && R() < 0.4) finRow(bx, bz, w, d, baseH * 0.9, c);
   } else {                                                  // tower: podium + shaft + crown
     const round = !opts.landmark && R() < 0.06;
@@ -480,6 +512,26 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       const dh = rr(4, 8);
       addShape(4, bx, h, bz, rad * 0.75, dh, rad * 0.75, c, win);
       addShape(2, bx, h + dh, bz, rad * 1.1, rr(4, 7), rad * 1.1, c * 0.85, c * 0.85);
+    } else if (!opts.landmark && R() < 0.1) {                // zigzag-plan slab: accordion facade creases
+      const hh = q3(h), zn = 3, sw = tw / zn;
+      for (let i = 0; i < zn; i++)
+        addShape(0, bx - tw / 2 + sw * (i + 0.5), podH, bz + (i % 2 ? -0.16 : 0.16) * td, sw + 0.3, hh - podH, td * 0.62, c, win);
+      addBox(bx, hh, bz, tw * 1.04, 0.7, td * 0.96, Math.min(0.92, c * 1.25 + 0.08));
+      roofKit(bx, hh + 0.7, bz, tw * 0.9, td * 0.72, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
+    } else if (!opts.landmark && R() < 0.09) {               // dark glass shaft held in a light structural frame
+      const hh = q3(h), dk = rr(0.28, 0.34), fc2 = Math.min(0.95, c * 1.3 + 0.15);
+      curPhase = 0.75;
+      addShape(0, bx, podH, bz, tw, hh - podH, td, dk, Math.max(0.07, dk - 0.14));
+      for (const sxq of [-1, 1]) for (const szq of [-1, 1])
+        addBox(bx + sxq * tw / 2, podH, bz + szq * td / 2, 0.55, hh - podH, 0.55, fc2);
+      for (let y0 = podH + FLOOR * 8; y0 < hh - 4; y0 += FLOOR * 8)
+        addBox(bx, y0, bz, tw * 1.02, 0.5, td * 1.02, fc2);   // belt courses
+      addBox(bx, hh, bz, tw * 1.06, 1.0, td * 1.06, fc2);
+      roofKit(bx, hh + 1.0, bz, tw * 0.9, td * 0.9, c, false);
+      if (dress) storefronts(bx, bz, w, d, c);
+      return;
     } else if (R() < 0.13) {                                 // layer-cake slab tower (stacked plates)
       let alt = false;
       for (let y0 = podH; y0 < h - 1; y0 += FLOOR) {
@@ -546,6 +598,9 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
       const t1 = q3(h * rr(0.55, 0.66));
       addShape(0, bx, podH, bz, tw, t1 - podH, td, c, win);
       cornice(bx, t1, bz, tw, td, c);
+      if (R() < 0.5)                                        // corner quoin piers up the shaft
+        for (const sxq of [-1, 1]) for (const szq of [-1, 1])
+          addBox(bx + sxq * tw / 2, podH, bz + szq * td / 2, 0.5, t1 - podH, 0.5, Math.min(0.95, c * 1.22 + 0.06));
       const s2 = rr(0.72, 0.85);
       const t2h = q3(h * rr(0.22, 0.3));
       addShape(0, bx, t1, bz, tw * s2, t2h, td * s2, c, win);
@@ -573,7 +628,7 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
         const rx2 = tw >= td;
         addShape(3, bx, topY, bz, (rx2 ? td : tw) * s2 * 0.96, rr(4, 7.5), (rx2 ? tw : td) * s2 * 0.96, c * 0.9, c * 0.9, rx2 ? Math.PI / 2 : 0);
       }
-      if (R() < 0.55) finRow(bx, bz, tw, td, (t1 - podH) * 0.92, c, podH);
+      if (R() < 0.72) finRow(bx, bz, tw, td, (t1 - podH) * 0.92, c, podH);
     }
     if (dress) storefronts(bx, bz, w, d, c);
     return;
@@ -584,10 +639,10 @@ function addBuilding(bx, bz, w, d, h, opts = {}) {
 function finRow(bx, bz, w, d, fh, c, y0 = 0) {
   const fc = Math.min(1, c * 1.18 + 0.05);
   for (const s of [-1, 1]) {
-    if (w >= d) for (let x0 = bx - w / 2 + 1.4; x0 < bx + w / 2 - 1; x0 += 2.6)
-      addBox(x0, y0 + 1.5, bz + s * d / 2, 0.3, fh, 0.24, fc);
-    else for (let z0 = bz - d / 2 + 1.4; z0 < bz + d / 2 - 1; z0 += 2.6)
-      addBox(bx + s * w / 2, y0 + 1.5, z0, 0.24, fh, 0.3, fc);
+    if (w >= d) for (let x0 = bx - w / 2 + 1.7; x0 < bx + w / 2 - 1.2; x0 += 3.4)
+      addBox(x0, y0 + 1.5, bz + s * d / 2, 0.34, fh, 0.26, fc);
+    else for (let z0 = bz - d / 2 + 1.7; z0 < bz + d / 2 - 1.2; z0 += 3.4)
+      addBox(bx + s * w / 2, y0 + 1.5, z0, 0.26, fh, 0.34, fc);
   }
 }
 /* storefront strip on hero-avenue facades — ONE bay grid, so piers, glass,
@@ -717,7 +772,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* the galleria: interlocking retail volumes + rooftop drum + signboard + plaza (Carrefour-block homage) */
 {
   setD(districts[0]);
-  curPhase = R();
+  curPhase = 0.75;                                           // the galleria reads as curtain wall
   const gx2 = -27, gz2 = 183;
   addShape(0, gx2, 0, gz2, 30, 6.2, 26, 0.62, 0.16);                       // glazed podium
   cornice(gx2, 6.2, gz2, 30, 26, 0.62);
@@ -735,7 +790,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 43 : 23;
+  const mstep = MOBILE ? 45 : 23;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
@@ -743,6 +798,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
     if (Math.abs(wz + 60) < 16 && wx < -150) continue;
     const hsh = R();
     if (hsh < 0.18) continue;                                // yards and gaps
+    curPhase = hsh > 0.9 ? 0.5 : 0;                          // borough fabric: punched, a few ribbon slabs
     const near = Math.exp(-(od - 66) / 260);                 // taller toward the shorelines
     let h = rr(3.5, 8 + 36 * near);
     if (hsh > 0.985) h = rr(26, 58) * near + 12;             // rare mid-rise cluster
@@ -819,8 +875,16 @@ cityMat.onBeforeCompile = shader => {
         float edgeIn = step( 0.7, halfL - abs( awU ) );             // corner margin
         vec2 awCell = vec2( awU / 1.7, vAWp.y / 3.1 );
         vec2 awF = fract( awCell );
-        float awFrame = step( 0.24, awF.x ) * step( awF.x, 0.76 ) * step( 0.22, awF.y ) * step( awF.y, 0.84 );
-        float awPane = step( 0.31, awF.x ) * step( awF.x, 0.69 ) * step( 0.28, awF.y ) * step( awF.y, 0.78 );
+        /* facade language, chosen per building: 0 punched masonry ·
+           1 pier-and-spandrel strips · 2 horizontal ribbon · 3 curtain wall */
+        float awSty = floor( vColor.b * 4.0 + 0.5 );
+        vec4 fr = vec4( 0.24, 0.76, 0.22, 0.84 );
+        vec4 pn = vec4( 0.31, 0.69, 0.28, 0.78 );
+        if ( awSty > 2.5 )      { fr = vec4( 0.045, 0.955, 0.05, 0.96 ); pn = vec4( 0.10, 0.90, 0.11, 0.90 ); }
+        else if ( awSty > 1.5 ) { fr = vec4( -0.1, 1.1, 0.24, 0.86 );    pn = vec4( -0.1, 1.1, 0.30, 0.80 ); }
+        else if ( awSty > 0.5 ) { fr = vec4( 0.26, 0.74, -0.1, 1.1 );    pn = vec4( 0.32, 0.68, 0.075, 0.925 ); }
+        float awFrame = step( fr.x, awF.x ) * step( awF.x, fr.y ) * step( fr.z, awF.y ) * step( awF.y, fr.w );
+        float awPane = step( pn.x, awF.x ) * step( awF.x, pn.y ) * step( pn.z, awF.y ) * step( awF.y, pn.w );
         vec2 awFw = fwidth( awCell );
         float awFade = 1.0 - smoothstep( 0.34, 0.7, max( awFw.x, awFw.y ) );
         float awHash = fract( sin( dot( floor( awCell ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );
@@ -828,7 +892,15 @@ cityMat.onBeforeCompile = shader => {
         float awRow = step( 1.95, floor( vAWp.y / 3.1 + 0.001 ) );             // windows start above the storefront zone
         float awGate = awFade * awVert * awAxis * awRow;
         float awTone = mix( awBase, awBase * 0.74, awFrame * awGate * edgeIn );
-        awTone = mix( awTone, awWin + ( awHash - 0.5 ) * 0.09, awPane * awGate * edgeIn );
+        /* deep-set glass: lintel shadow at the top of each pane, faint sky
+           catch at the sill, a paired mullion splitting curtain-wall cells */
+        float awPv = clamp( ( awF.y - pn.z ) / max( pn.w - pn.z, 1e-3 ), 0.0, 1.0 );
+        float awRev = mix( 0.30, 0.10, step( 2.5, awSty ) ) * smoothstep( 0.55, 1.0, awPv );
+        float awSill = 0.05 * ( 1.0 - smoothstep( 0.0, 0.22, awPv ) );
+        float awAmp = mix( 0.09, 0.15, step( 2.5, awSty ) );
+        float awGlass = clamp( awWin * ( 1.0 - awRev ) + awSill + ( awHash - 0.5 ) * awAmp, 0.03, 0.9 );
+        if ( awSty > 2.5 && abs( awF.x - 0.5 ) < 0.022 ) awGlass = awBase * 0.8;
+        awTone = mix( awTone, awGlass, awPane * awGate * edgeIn );
         float awFl = step( fract( awCell.y ), 0.05 ) * step( 0.95, floor( vAWp.y / 3.1 + 0.001 ) );
         awTone = mix( awTone, min( 1.0, awBase * 1.15 + 0.05 ), awFl * awFade * awVert * 0.55 );
         awTone *= 0.8 + 0.2 * smoothstep( 0.0, 15.0, vAWp.y );
@@ -1177,9 +1249,9 @@ function blobNormals(geo, coreFn, amt = 0.6) {
 }
 function personCore(v, c) {
   if (v.y > 1.36) { c.set(0, 1.5, 0.02); return; }                              // head sphere center
-  const armW = (v.y > 0.5 && v.y < 1.25 ? 1 : 0) * THREE.MathUtils.smoothstep(Math.abs(v.x), 0.18, 0.27);
+  const armW = (v.y > 0.5 && v.y < 1.25 ? 1 : 0) * THREE.MathUtils.smoothstep(Math.abs(v.x), 0.16, 0.24);
   c.set(
-    Math.sign(v.x) * 0.275 * armW,                                             // arm axis
+    Math.sign(v.x) * 0.235 * armW,                                             // arm axis
     THREE.MathUtils.clamp(v.y, 0.18, 1.18) * (1 - armW) + THREE.MathUtils.clamp(v.y, 0.68, 1.02) * armW,
     0
   );
@@ -1193,8 +1265,8 @@ function personCore(v, c) {
 function radialBody(o) {
   const ph = !!o.phone, skin = 0.97, zh = ph ? 0.04 : 0;
   const prof = o.dress
-    ? [[0.305, 0.26], [0.27, 0.44], [0.235, 0.68], [0.235, 0.9], [0.2, 1.08], [0.145, 1.2], [0.05, 1.3]]
-    : [[0.16, 0.42], [0.215, 0.68], [0.243, 0.88], [0.222, 1.05], [0.165, 1.2], [0.05, 1.3]];
+    ? [[0.27, 0.26], [0.24, 0.44], [0.205, 0.68], [0.205, 0.9], [0.175, 1.08], [0.128, 1.2], [0.045, 1.3]]
+    : [[0.145, 0.42], [0.19, 0.68], [0.212, 0.88], [0.196, 1.05], [0.148, 1.2], [0.045, 1.3]];
   const yHem = prof[0][1], yTop = 1.772;
   const torsoR = y => {
     if (y <= prof[0][1]) return prof[0][0];
@@ -1207,17 +1279,17 @@ function radialBody(o) {
   };
   const headR = 0.265, headY = 1.5;
   const headSect = y => { const dy = (y - headY) / 1.03; const q = headR * headR - dy * dy; return q > 0 ? Math.sqrt(q) : 0; };
-  const Sy = 1.14, Wy = 0.65, rM = 0.115;
+  const Sy = 1.16, Wy = 0.65, rM = 0.1;
   const armSect = y => {
-    if (y > Sy + 0.06 || y < Wy - rM) return [0, 0.27];
+    if (y > Sy + 0.06 || y < Wy - rM) return [0, 0.24];
     if (y >= Wy) {
       const t = clamp((Sy - y) / (Sy - Wy), 0, 1);
-      return [0.082 + 0.03 * sstep(t, 0.72, 1) - 0.02 * sstep(1 - t, 0.75, 1), lerp(0.258, 0.298, t)];
+      return [0.07 + 0.026 * sstep(t, 0.72, 1) - 0.016 * sstep(1 - t, 0.75, 1), lerp(0.222, 0.252, t)];
     }
     const q = rM * rM - (Wy - y) * (Wy - y);
-    return [q > 0 ? Math.sqrt(q) : 0, 0.298];
+    return [q > 0 ? Math.sqrt(q) : 0, 0.252];
   };
-  const NA = 18, NY = 21, k = 0.045;
+  const NA = 18, NY = 21, k = 0.03;
   const pos = [], col = [];
   const sides = ph ? [-1] : [-1, 1];
   for (let iy = 0; iy <= NY; iy++) {
@@ -1264,14 +1336,14 @@ function makePerson(o) {
   const ph = !!o.phone;
   /* legs + feet (short under a dress hem) */
   for (const s of [-1, 1]) {
-    g.push(part(Cap(0.105, o.dress ? 0.16 : 0.34, 8), o.legsC, { x: s * 0.115, y: o.dress ? 0.27 : 0.37 }));
-    g.push(part(Sph(0.095, 8, 6), 0.22, { x: s * 0.115, y: 0.075, z: 0.09, sy: 0.72, sz: 1.3 }));
+    g.push(part(Cap(0.095, o.dress ? 0.16 : 0.34, 8), o.legsC, { x: s * 0.107, y: o.dress ? 0.27 : 0.37 }));
+    g.push(part(Sph(0.088, 8, 6), 0.22, { x: s * 0.107, y: 0.072, z: 0.085, sy: 0.72, sz: 1.3 }));
   }
   g.push(radialBody(o));
   if (ph) {                                                 // bent texting arm + phone
-    g.push(part(Cap(0.08, 0.16, 8), o.top, { x: 0.25, y: 1.0, rz: -0.2 }));
-    g.push(part(Cap(0.068, 0.16, 8), o.top, { rx: -1.05, x: 0.17, y: 1.06, z: 0.12 }));
-    g.push(part(Sph(0.088, 9, 7), o.top, { x: 0.14, y: 1.04, z: 0.18 }));   // cradles the lower bezel, stays behind the screen
+    g.push(part(Cap(0.07, 0.16, 8), o.top, { x: 0.22, y: 1.0, rz: -0.2 }));
+    g.push(part(Cap(0.06, 0.16, 8), o.top, { rx: -1.05, x: 0.155, y: 1.06, z: 0.12 }));
+    g.push(part(Sph(0.08, 9, 7), o.top, { x: 0.13, y: 1.04, z: 0.175 }));   // cradles the lower bezel, stays behind the screen
     g.push(part(Box(0.13, 0.2, 0.022), 0.06, { rx: -0.5, x: 0.115, y: 1.14, z: 0.235 }));
     g.push(part(Box(0.104, 0.168, 0.02), 0.97, { rx: -0.5, x: 0.115, y: 1.145, z: 0.245 }));   // bright screen
   }
@@ -1287,7 +1359,7 @@ function makePerson(o) {
     if (o.bun) g.push(part(Sph(0.1, 8, 6), o.hair, { y: hy + 0.24, z: -0.15 }));
     if (o.pony) g.push(part(Cap(0.065, 0.22, 7), o.hair, { y: hy + 0.02, z: -0.28, rx: 0.55 }));
   }
-  if (o.backpack) g.push(part(Box(0.26, 0.32, 0.13), 0.1, { y: 0.98, z: -0.3 }));
+  if (o.backpack) g.push(part(Box(0.24, 0.3, 0.12), 0.1, { y: 0.98, z: -0.26 }));
   if (o.cane) g.push(part(Cyl(0.028, 0.028, 0.85, 6), 0.25, { x: 0.34, y: 0.43, z: 0.07, rz: 0.09 }));
   const geo = mergeGeoms(g);
   blobNormals(geo, personCore, 0.35);
