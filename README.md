@@ -15,7 +15,8 @@ Scroll to descend: aerial island → cloud layer → rooftop skim → avenue can
 - Rotated street-grid districts, rivers, bridges, outer boroughs, a park with a pond
 - 36+ building archetypes (ribbon-slab, chamfered, twin-with-skybridge, terraced, deco setback, zigzag slab, H-plan pre-war, framed dark-glass tower, and more) built from instanced unit shapes
 - Four procedural facade languages — punched masonry, pier-and-spandrel strips, horizontal ribbon, curtain wall — with deep-set window reveals, corner quoins, loggia crowns, and radio masts
-- 12 vehicle types in flowing traffic, soft vinyl-toy pedestrians with phones, a working intersection
+- 12 vehicle types in flowing traffic, a working intersection, and soft vinyl-toy pedestrians whose limbs are single Catmull-Rom swept tubes — leg into boot, arm into fist, no seams
+- Hero sidewalks on a flat uniform plate with one square paver module, so the paving reads even from eye level
 - Device-tier presets: ~45 draw calls / <500k triangles on mobile
 
 ## Tuning

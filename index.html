@@ -85,7 +85,7 @@ const MOBILE = tier === 'mobile';
 
 const PRESETS = {
   desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048, mist: 3,
-             people: 112, cars: 34, parked: 45, birds: 44, planes: 3, clouds: 14, dogs: 6, cloudShadows: true },
+             people: 109, cars: 34, parked: 45, birds: 44, planes: 3, clouds: 14, dogs: 6, cloudShadows: true },
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
              people: 108, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
@@ -1114,14 +1114,35 @@ const streetParts = [];
   for (const [bxq, bzq] of [[8.7, 27.6], [-8.7, 27.6], [8.7, 48.4], [-8.7, 48.4]])
     for (let i = 0; i < 3; i++)
       paint.push(part(Cyl(0.09, 0.09, 0.75, 8), 0.3, { x: bxq + (Math.abs(bxq) > 8 ? 0 : 0) + i * (bxq > 0 ? 0.9 : -0.9), y: 0.37, z: bzq }));
-  /* paver seam grid on the hero sidewalks (the ref-render paving pattern) */
-  for (let z = -58; z <= 202; z += 2.4) {
-    if (Math.abs(z - HERO_ST) < 5.5) continue;
+  /* The hero sidewalks get their own flat plate. The ground texture is about
+     one texel per metre, so at eye level its AO mottling smears across the
+     walk; a uniform surface here reads as poured pavement instead. Runs are
+     broken only where a cross street actually cuts through. */
+  const WALK = [];
+  {
+    const G = ST_HALF + 1.2;
+    let z0 = -95;
+    for (const zc of [-42, -2, HERO_ST, 78]) { WALK.push([z0, zc - G]); z0 = zc + G; }
+    WALK.push([z0, 215]);
+  }
+  for (const [z0, z1] of WALK)
+    for (const sx of [-1, 1])
+      paint.push(part(Box(SIDE_AV, 0.012, z1 - z0), 0.945, { x: sx * (AV_HALF + SIDE_AV / 2), y: 0.006, z: (z0 + z1) / 2 }));
+  /* one square paver module, aligned to a global origin: three equal bays
+     across the walk and the same pitch along it, so every slab matches */
+  const PAVE = 4.6 / 3;
+  for (let k = Math.ceil(-58 / PAVE); k * PAVE <= 202; k++) {
+    const z = k * PAVE;
+    if (WALK.every(([z0, z1]) => z < z0 || z > z1)) continue;
     for (const sx of [-1, 1])
       paint.push(part(Box(4.6, 0.028, 0.07), 0.9, { x: sx * 10.55, y: 0.028, z }));
   }
-  for (const lx of [9.35, 11.7, -9.35, -11.7])
-    paint.push(part(Box(0.07, 0.028, 262), 0.9, { x: lx, y: 0.028, z: 72 }));
+  for (const [z0, z1] of WALK) {
+    const a = Math.max(z0, -58), b = Math.min(z1, 202);
+    if (b - a < 2) continue;
+    for (const sx of [-1, 1]) for (const j of [1, 2])
+      paint.push(part(Box(0.07, 0.028, b - a), 0.9, { x: sx * (8.25 + PAVE * j), y: 0.028, z: (a + b) / 2 }));
+  }
 }
 
 /* ---- bridges fading into the white ---- */
@@ -1292,7 +1313,7 @@ function radialBody(o) {
     const u = clamp((y - 0.9) / (Sy + 0.04 - 0.9), 0, 1);
     return [0.05 + 0.032 * Math.sin(Math.PI * u), 0.207, 0.006, sstep(y, 0.9, 1.0)];
   };
-  const NA = MOBILE ? 14 : 18, NY = MOBILE ? 18 : 21, k = 0.03;
+  const NA = MOBILE ? 15 : 18, NY = MOBILE ? 18 : 20, k = 0.03;
   const pos = [], col = [];
   const sides = [-1, 1];
   for (let iy = 0; iy <= NY; iy++) {
@@ -1336,74 +1357,104 @@ function radialBody(o) {
   geo.computeVertexNormals();
   return geo.toNonIndexed();
 }
-/* one hanging arm as its own smooth swept tube: emerges from under the
-   deltoid, bows out at the elbow, pinches at the wrist, swells to a fist —
-   with clear air between arm and torso, per the reference figure */
-function armTube(o, s) {
-  const AK = [                                     // y, x, z, r — bottom (fist) → top (buried in deltoid)
-    [0.475, 0.283, 0.038, 0.03],
-    [0.5,   0.284, 0.038, 0.064],
-    [0.545, 0.285, 0.038, 0.085],
-    [0.592, 0.283, 0.036, 0.079],
-    [0.65,  0.278, 0.03,  0.058],
-    [0.735, 0.286, 0.022, 0.064],
-    [0.85,  0.292, 0.014, 0.07],
-    [0.98,  0.22,  0.007, 0.058],
-    [1.075, 0.202, 0.003, 0.05],
-  ];
-  const NR = MOBILE ? 8 : 10, NS = MOBILE ? 8 : 9;
-  const kv = (t, c) => {
-    const f = t * (AK.length - 1), i = Math.min(AK.length - 2, f | 0), u = f - i;
-    return lerp(AK[i][c], AK[i + 1][c], u * u * (3 - 2 * u));
+/* A limb as one smooth swept tube. The profile runs through its keys on a
+   Catmull-Rom spline, so curvature is continuous end to end — no plateaus at
+   the keys, no seam where a foot or a hand used to be a separate primitive.
+   Rings cluster wherever keys cluster, which spends resolution exactly where
+   it shows (the fist, the toe) instead of spreading it evenly.
+   Keys are [y, cx, cz, rx, rz]; elliptical sections let a boot run long
+   front-to-back while the ankle above it stays round. */
+function limbTube(keys, s, toneAt, NR, NS) {
+  const n = keys.length;
+  const K = (i, c) => keys[Math.max(0, Math.min(n - 1, i))][c];
+  const cr = (f, c) => {
+    const i = Math.max(0, Math.min(n - 2, Math.floor(f))), u = f - i;
+    const a = K(i - 1, c), b = K(i, c), d = K(i + 1, c), e = K(i + 2, c);
+    return 0.5 * (2 * b + (-a + d) * u + (2 * a - 5 * b + 4 * d - e) * u * u + (-a + 3 * b - 3 * d + e) * u * u * u);
   };
+  const tone = typeof toneAt === 'function' ? toneAt : () => toneAt;
   const pos = [], col = [], idx = [];
   for (let i = 0; i <= NR; i++) {
-    const t = i / NR, y = kv(t, 0), r = kv(t, 3);
-    const cx = s * (kv(t, 1) + (o.dress ? 0.026 * (1 - sstep(y, 0.62, 0.78)) : 0));   // clear the wider dress hip
-    const cz = kv(t, 2);
+    const f = i / NR * (n - 1);
+    const y = cr(f, 0), cx = cr(f, 1), cz = cr(f, 2);
+    const rx = Math.max(0.004, cr(f, 3)), rz = Math.max(0.004, cr(f, 4));
+    const t2 = tone(y);
     for (let a = 0; a < NS; a++) {
       const th = a / NS * Math.PI * 2;
-      pos.push(cx + r * Math.cos(th), y, cz + r * Math.sin(th));
-      col.push(o.top, o.top, o.top);
+      pos.push(s * cx + rx * Math.cos(th), y, cz + rz * Math.sin(th));   // mirror the centre only, so winding survives
+      col.push(t2, t2, t2);
     }
   }
   for (let i = 0; i < NR; i++) for (let a = 0; a < NS; a++) {
     const q = i * NS + a, b = i * NS + (a + 1) % NS, c3 = q + NS, d2 = b + NS;
     idx.push(q, c3, b, b, c3, d2);
   }
-  const top = pos.length / 3;
-  pos.push(s * AK[AK.length - 1][1], AK[AK.length - 1][0] + 0.01, AK[AK.length - 1][2]); col.push(o.top, o.top, o.top);
-  for (let a = 0; a < NS; a++) idx.push(NR * NS + a, top, NR * NS + (a + 1) % NS);
-  const bot = pos.length / 3;
-  pos.push(s * (AK[0][1] + (o.dress ? 0.026 : 0)), AK[0][0] - 0.012, AK[0][2]); col.push(o.top, o.top, o.top);
-  for (let a = 0; a < NS; a++) idx.push(a, (a + 1) % NS, bot);
+  const b0 = pos.length / 3, tb = tone(keys[0][0]);
+  pos.push(s * keys[0][1], keys[0][0] - 0.007, keys[0][2]); col.push(tb, tb, tb);
+  for (let a = 0; a < NS; a++) idx.push(a, (a + 1) % NS, b0);
+  const t0 = pos.length / 3, tt = tone(keys[n - 1][0]);
+  pos.push(s * keys[n - 1][1], keys[n - 1][0] + 0.007, keys[n - 1][2]); col.push(tt, tt, tt);
+  for (let a = 0; a < NS; a++) idx.push(NR * NS + a, t0, NR * NS + (a + 1) % NS);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.setIndex(idx); geo.computeVertexNormals();
   return geo.toNonIndexed();
 }
+/* the hanging arm: out of the deltoid, bowing at the elbow, pinching at the
+   wrist, closing into a round fist — with clear air against the torso */
+const armKeys = o => {
+  const w = o.dress ? 0.024 : 0;                            // clear the wider skirt
+  return [
+    [0.452, 0.284 + w, 0.042, 0.030, 0.031],                // fist tip
+    [0.478, 0.284 + w, 0.042, 0.062, 0.064],
+    [0.508, 0.285 + w, 0.041, 0.082, 0.084],                // knuckles
+    [0.549, 0.285 + w, 0.039, 0.084, 0.085],
+    [0.600, 0.283 + w, 0.035, 0.069, 0.071],                // wrist
+    [0.666, 0.279 + w * 0.6, 0.028, 0.061, 0.062],
+    [0.760, 0.285 + w * 0.3, 0.021, 0.065, 0.065],          // elbow bow
+    [0.870, 0.292, 0.014, 0.070, 0.070],
+    [0.985, 0.236, 0.007, 0.061, 0.061],                    // shoulder
+    [1.080, 0.205, 0.003, 0.050, 0.050],                    // buried in the deltoid
+  ];
+};
+/* leg and boot in one surface: rounded sole, toe box, instep, ankle, calf,
+   thigh — the legs touch at the crotch and splay a little to the feet */
+const legKeys = o => {
+  const K = [
+    [0.004, 0.118, 0.062, 0.072, 0.112],                    // sole
+    [0.023, 0.118, 0.062, 0.093, 0.144],
+    [0.049, 0.118, 0.060, 0.100, 0.152],                    // boot at its widest
+    [0.083, 0.117, 0.050, 0.099, 0.140],                    // toe box
+    [0.119, 0.116, 0.026, 0.096, 0.110],                    // instep
+    [0.159, 0.114, 0.006, 0.092, 0.094],                    // ankle
+    [0.236, 0.112, 0.000, 0.094, 0.094],
+    [0.331, 0.110, 0.000, 0.100, 0.100],                    // calf
+    [0.441, 0.105, 0.000, 0.103, 0.103],                    // thigh
+    [0.560, 0.098, 0.000, 0.098, 0.098],                    // hip, tucked inside the torso
+  ];
+  return o.dress ? K.slice(0, 8).concat([[0.360, 0.108, 0, 0.100, 0.100]]) : K;
+};
 function makePerson(o) {
-  const g = [];
+  const g = [], smooth = [];
   const ph = !!o.phone;
-  /* chunky legs to a high crotch, big round-toed boot bumps (per reference) */
-  for (const s of [-1, 1]) {
-    g.push(part(Cap(0.102, o.dress ? 0.14 : 0.3, 8), o.legsC, { x: s * 0.112, y: o.dress ? 0.24 : 0.32 }));
-    g.push(part(Sph(0.098, 8, 6), 0.22, { x: s * 0.112, y: 0.07, z: 0.1, sy: 0.7, sz: 1.5 }));
-  }
-  g.push(armTube(o, -1));
-  if (!ph) g.push(armTube(o, 1));
+  const LNR = MOBILE ? 7 : 9, LNS = MOBILE ? 10 : 11;
+  const shoe = y => lerp(0.22, o.legsC, sstep(y, 0.148, 0.178));
+  const lk = legKeys(o);
+  for (const s of [-1, 1]) smooth.push(limbTube(lk, s, shoe, o.dress ? LNR - 1 : LNR, LNS));
+  smooth.push(limbTube(armKeys(o), -1, o.top, LNR, LNS));
+  if (!ph) smooth.push(limbTube(armKeys(o), 1, o.top, LNR, LNS));
   if (ph) {                                                 // bent texting arm + phone
-    g.push(part(Cap(0.07, 0.16, 8), o.top, { x: 0.21, y: 0.97, rz: -0.2 }));
-    g.push(part(Cap(0.06, 0.16, 8), o.top, { rx: -1.05, x: 0.15, y: 1.02, z: 0.12 }));
-    g.push(part(Sph(0.085, 9, 7), o.top, { x: 0.125, y: 0.99, z: 0.17 }));   // cradles the lower bezel, stays behind the screen
+    g.push(part(Cap(0.07, 0.16, 10), o.top, { x: 0.21, y: 0.97, rz: -0.2 }));
+    g.push(part(Cap(0.06, 0.16, 10), o.top, { rx: -1.05, x: 0.15, y: 1.02, z: 0.12 }));
+    g.push(part(Sph(0.085, 10, 8), o.top, { x: 0.125, y: 0.99, z: 0.17 }));   // cradles the lower bezel, stays behind the screen
     g.push(part(Box(0.13, 0.2, 0.022), 0.06, { rx: -0.5, x: 0.115, y: 1.1, z: 0.235 }));
     g.push(part(Box(0.104, 0.168, 0.02), 0.97, { rx: -0.5, x: 0.115, y: 1.105, z: 0.245 }));   // bright screen
   }
   const hy = 1.5, HS = MOBILE ? 12 : 15;                    // head is part of radialBody; accessories sit on it
   if (o.hat === 'cap') {
-    g.push(part(Sph(0.322, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.42), 0.08, { rx: ph ? 0.18 : 0, y: hy + 0.05, z: ph ? 0.06 : 0 }));
-    g.push(part(Box(0.34, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.2 : 0), y: hy + (ph ? 0.07 : 0.1), z: (ph ? 0.34 : 0.31) }));
+    g.push(part(Sph(0.322, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), 0.08, { rx: ph ? 0.18 : 0, y: hy + 0.05, z: ph ? 0.06 : 0 }));
+    g.push(part(Box(0.34, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.2 : 0), y: hy + (ph ? 0.03 : 0.06), z: (ph ? 0.34 : 0.31) }));
   } else if (o.hat === 'brim') {
     g.push(part(Cyl(0.43, 0.43, 0.035, 12), 0.9, { y: hy + 0.15 }));
     g.push(part(Sph(0.272, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.14 }));
@@ -1414,11 +1465,11 @@ function makePerson(o) {
   }
   if (o.backpack) g.push(part(Box(0.24, 0.3, 0.12), 0.1, { y: 0.98, z: -0.26 }));
   if (o.cane) g.push(part(Cyl(0.028, 0.028, 0.85, 6), 0.25, { x: 0.35, y: 0.43, z: 0.06, rz: 0.09 }));
-  /* soft-shade only the assembled parts; the one-piece body keeps its own
-     analytically smooth normals untouched */
+  /* soft-shade only the hard accessory primitives; the body and the swept
+     limbs already carry exact, continuous normals — blending would warp them */
   const acc = mergeGeoms(g);
   blobNormals(acc, personCore, 0.35);
-  return mergeGeoms([acc, radialBody(o)]);
+  return mergeGeoms([acc, radialBody(o), ...smooth]);
 }
 const peopleVariants = [
   makePerson({ hat: 'cap', top: 0.12, legsC: 0.88, backpack: true }),                 // capped kid w/ backpack
@@ -2038,8 +2089,8 @@ function tick() {
   /* lens: long aerial → widen through the canyon → narrow planimetric finale */
   camera.fov = 34 + (58 - 34) * sstep(p, 0.45, 0.78) - (58 - (MOBILE ? 54 : 27)) * sstep(p, 0.84, 0.985);
   if (qs.get('fig')) {                                     // dev: figure close-up inspection
-    camera.position.set(14.4, 1.15, 48.6);
-    camera.lookAt(12.35, 0.95, 45.9);
+    camera.position.set(14.0, 1.02, 48.0);
+    camera.lookAt(12.35, 0.86, 45.95);
     camera.fov = 38;
   }
   camera.near = lerp(3.5, 0.16, sstep(p, 0.55, 0.92));
