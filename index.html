@@ -1808,14 +1808,17 @@ function boxOf(L, hw, y0, y1, n, zc = 0) {
     [zc + f,       y0 + H * 0.05, y1 - H * 0.05, hw * 0.93, n],
   ];
 }
-/* the greenhouse as its own soft canopy, rising out of the beltline */
+/* the greenhouse as its own soft canopy rising out of the beltline:
+   gentle slope up from the trunk, a full rounded dome forward of centre,
+   then a steep windshield rake — per the reference sheets */
 function cabinOf(z0, z1, hw, yB, yT, n) {
   const D = z1 - z0, H = yT - yB;
   return [
-    [z0,             yB, yB + H * 0.62, hw * 0.70, n * 0.8],
-    [z0 + D * 0.28,  yB, yT,            hw * 0.95, n],
-    [z0 + D * 0.70,  yB, yT,            hw,        n],
-    [z1,             yB, yB + H * 0.52, hw * 0.62, n * 0.8],
+    [z0,            yB, yB + H * 0.42, hw * 0.6,  n * 0.75],
+    [z0 + D * 0.2,  yB, yT,            hw * 0.97, n],
+    [z0 + D * 0.6,  yB, yT,            hw,        n],
+    [z0 + D * 0.85, yB, yB + H * 0.72, hw * 0.9,  n * 0.9],
+    [z1,            yB, yB + H * 0.3,  hw * 0.56, n * 0.7],
   ];
 }
 /* a dark window band wrapping the hull, tapered at both ends so its caps
@@ -1838,7 +1841,7 @@ const lamps = (g, hw, f, y) => {
 function makeSedan(taxi) {
   const g = [];
   g.push(shell(bodyOf(4.6, 0.87, 0.22, 0.90, 5.2), BNS, 1));
-  g.push(shell(cabinOf(-1.72, 0.86, 0.78, 0.56, 1.24, 4.8), GNS, 0.13));
+  g.push(shell(cabinOf(-1.76, 0.95, 0.79, 0.58, 1.44, 4.8), GNS, 0.13));
   lamps(g, 0.87, 2.3, 0.58);
   if (taxi) g.push(part(Box(0.5, 0.15, 0.2), 0.85, { y: 1.44, z: -0.3 }));
   wheelsFor(g, 0.30, 0.80, [1.38, -1.38]);
@@ -1847,8 +1850,8 @@ function makeSedan(taxi) {
 function makeSUV() {
   const g = [];
   g.push(shell(bodyOf(4.7, 0.92, 0.26, 1.10, 5.6), BNS, 1));
-  g.push(shell(cabinOf(-1.88, 0.98, 0.84, 0.70, 1.50, 5.2), GNS, 0.13));
-  g.push(part(Box(1.26, 0.05, 1.9), 0.34, { y: 1.53, z: -0.5 }));            // roof rails
+  g.push(shell(cabinOf(-1.92, 1.1, 0.85, 0.72, 1.68, 5.2), GNS, 0.13));
+  g.push(part(Box(1.26, 0.05, 1.9), 0.34, { y: 1.7, z: -0.45 }));            // roof rails
   lamps(g, 0.92, 2.35, 0.72);
   wheelsFor(g, 0.34, 0.85, [1.42, -1.42]);
   return mergeGeoms(g);
@@ -1857,6 +1860,7 @@ function makeVan() {
   const g = [];
   g.push(shell(boxOf(5.2, 0.95, 0.30, 1.70, 5.5), BNS, 1));
   g.push(shell(bandOf(0.5, 2.5, 0.95, 1.06, 1.48, 5.5), GNS, 0.13));
+  g.push(part(Box(1.14, 0.04, 1.5), 0.13, { y: 1.71, z: 0.9 }));             // sunroof
   lamps(g, 0.95, 2.6, 0.6);
   wheelsFor(g, 0.34, 0.86, [1.6, -1.6]);
   return mergeGeoms(g);
@@ -1864,9 +1868,10 @@ function makeVan() {
 function makeTruck() {
   const g = [];
   g.push(shell(boxOf(3.7, 1.02, 0.55, 2.42, 8, -0.8), BNS, 0.93));          // cargo body
-  g.push(shell(boxOf(2.0, 0.95, 0.32, 1.98, 5.5, 1.95), BNS, 1));           // cab
-  g.push(shell(bandOf(1.55, 2.9, 0.95, 1.32, 1.82, 5.5), GNS, 0.13));
-  lamps(g, 0.95, 2.9, 0.62);
+  g.push(part(Box(1.5, 0.28, 1.1), 0.86, { y: 2.6, z: 1.15 }));             // reefer unit over the cab
+  g.push(shell(bodyOf(2.3, 0.95, 0.32, 1.34, 5, 0.8, 1.9), BNS, 1));        // rounded aero cab
+  g.push(shell(cabinOf(1.0, 2.85, 0.88, 1.28, 2.08, 4.4), GNS, 0.13));      // domed glass top
+  lamps(g, 0.95, 2.95, 0.62);
   wheelsFor(g, 0.38, 0.88, [1.9, -1.4]);
   return mergeGeoms(g);
 }
@@ -1874,6 +1879,7 @@ function makeBus() {
   const g = [];
   g.push(shell(boxOf(10.4, 1.15, 0.35, 2.92, 7), BNS, 1));
   g.push(shell(bandOf(-4.7, 4.8, 1.15, 1.58, 2.42, 7), GNS, 0.13));
+  for (const zq of [2.3, -1.6]) g.push(part(Box(1.6, 0.05, 2.6), 0.13, { y: 2.94, z: zq }));   // roof skylights
   lamps(g, 1.15, 5.2, 0.62);
   wheelsFor(g, 0.42, 1.0, [3.3, -3.3]);
   return mergeGeoms(g);
@@ -1881,7 +1887,7 @@ function makeBus() {
 function makeHatch() {
   const g = [];
   g.push(shell(bodyOf(3.9, 0.84, 0.21, 0.88, 5.2), BNS, 1));
-  g.push(shell(cabinOf(-1.32, 0.70, 0.75, 0.55, 1.21, 4.8), GNS, 0.13));
+  g.push(shell(cabinOf(-1.36, 0.78, 0.76, 0.57, 1.4, 4.8), GNS, 0.13));
   lamps(g, 0.84, 1.95, 0.56);
   wheelsFor(g, 0.29, 0.78, [1.14, -1.14]);
   return mergeGeoms(g);
@@ -1889,7 +1895,7 @@ function makeHatch() {
 function makePickup() {
   const g = [];
   g.push(shell(bodyOf(5.2, 0.9, 0.24, 0.98, 5.6), BNS, 1));
-  g.push(shell(cabinOf(-0.24, 1.36, 0.79, 0.52, 1.44, 5.0), GNS, 0.13));
+  g.push(shell(cabinOf(-0.3, 1.5, 0.8, 0.6, 1.6, 5.0), GNS, 0.13));
   for (const s of [-1, 1]) g.push(part(Box(0.1, 0.4, 2.3), 0.9, { x: s * 0.86, y: 1.2, z: -1.4 }));
   g.push(part(Box(1.82, 0.4, 0.1), 0.9, { y: 1.2, z: -2.5 }));              // tailgate
   lamps(g, 0.9, 2.6, 0.6);
@@ -1899,7 +1905,7 @@ function makePickup() {
 function makeCoupe() {
   const g = [];
   g.push(shell(bodyOf(4.4, 0.86, 0.20, 0.82, 5.0), BNS, 1));
-  g.push(shell(cabinOf(-1.42, 0.38, 0.73, 0.52, 1.12, 4.6), GNS, 0.13));
+  g.push(shell(cabinOf(-1.46, 0.5, 0.74, 0.54, 1.26, 4.6), GNS, 0.13));
   lamps(g, 0.86, 2.2, 0.52);
   wheelsFor(g, 0.29, 0.80, [1.28, -1.28]);
   return mergeGeoms(g);
@@ -1917,8 +1923,8 @@ function makeScooter() {
 }
 function makeFlatbed() {
   const g = [];
-  g.push(shell(boxOf(2.0, 0.95, 0.32, 1.95, 5.5, 2.15), BNS, 1));           // cab
-  g.push(shell(bandOf(1.75, 3.1, 0.95, 1.3, 1.8, 5.5), GNS, 0.13));
+  g.push(shell(bodyOf(2.3, 0.95, 0.32, 1.32, 5, 0.8, 2.1), BNS, 1));        // rounded aero cab
+  g.push(shell(cabinOf(1.2, 3.05, 0.88, 1.26, 2.05, 4.4), GNS, 0.13));      // domed glass top
   g.push(part(Box(2.0, 0.28, 4.4), 0.85, { y: 0.78, z: -0.9 }));            // deck
   g.push(part(Box(1.3, 0.9, 1.2), 0.6, { y: 1.36, z: -0.45 }));             // crates
   g.push(part(Box(0.9, 0.6, 0.9), 0.72, { y: 1.21, z: -1.95 }));
@@ -1929,7 +1935,7 @@ function makeFlatbed() {
 function makeLimo() {
   const g = [];
   g.push(shell(bodyOf(6.6, 0.88, 0.22, 0.90, 5.2), BNS, 1));
-  g.push(shell(cabinOf(-2.62, 1.06, 0.79, 0.58, 1.22, 4.8), GNS, 0.12));
+  g.push(shell(cabinOf(-2.66, 1.15, 0.8, 0.6, 1.4, 4.8), GNS, 0.12));
   lamps(g, 0.88, 3.3, 0.58);
   wheelsFor(g, 0.30, 0.82, [2.32, -2.32]);
   return mergeGeoms(g);
@@ -2032,6 +2038,17 @@ const vehicleMeshes = allVehicleGeos.map((geo, vi) => {
     D3.updateMatrix(); vehicleMeshes[p2.mi].setMatrixAt(p2.slot, D3.matrix);
   }
   vehicleMeshes.forEach(m => { if (m.instanceColor) m.instanceColor.needsUpdate = true; });
+}
+if (qs.get('fleet')) {                                       // dev: line the fine fleet up for inspection
+  const D3f = new THREE.Object3D(), Cf = new THREE.Color();
+  vehicleMeshes.slice(0, NV).forEach((m, i) => {
+    D3f.position.set(-12 + (i % 4) * 7, 0, 50 - Math.floor(i / 4) * 12);
+    D3f.rotation.set(0, -0.55, 0); D3f.scale.setScalar(1); D3f.updateMatrix();
+    m.setMatrixAt(0, D3f.matrix);
+    m.setColorAt(0, Cf.setScalar(0.92));
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
 }
 
 /* ================================================================== *
@@ -2274,6 +2291,11 @@ function tick() {
     camera.lookAt(-27, 0.2, 117);
     camera.fov = 38;
   }
+  if (qs.get('fleet')) {                                     // dev: fleet showroom
+    camera.position.set(1, 12, 76);
+    camera.lookAt(2, 0.2, 38);
+    camera.fov = 52;
+  }
   camera.near = lerp(3.5, 0.16, sstep(p, 0.55, 0.92));
   camera.far = lerp(2800, 950, sstep(p, 0.55, 0.92));
   camera.updateProjectionMatrix();
@@ -2300,7 +2322,7 @@ function tick() {
   stopDot.material.color.setScalar(ls === 'green' ? 0.17 : ls === 'yellow' ? 0.6 : 0.93);
 
   /* ---- vehicles ---- */
-  for (const c of cars) {
+  if (!qs.get('fleet')) for (const c of cars) {
     let vdes = c.cruise;
     if (c.hero && c.dir > 0) {
       const z = c.ln.oz + c.ln.dz * c.s;
