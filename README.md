@@ -12,7 +12,8 @@ Scroll to descend: aerial island → cloud layer → rooftop skim → avenue can
 ## What's inside
 
 - One self-contained `index.html` (~2,000 lines): procedural city, no downloaded assets
-- Rotated street-grid districts, rivers, bridges, outer boroughs, a park with a pond
+- Rotated street-grid districts, bridges, outer boroughs — and real water: rivers cut through to a glossy plane, and a park pond with stone banks, reeds, lily pads, a dock, and drifting vinyl ducks
+- Three smooth topiary tree species (street round, tall column, park lush), tinted per tree, with cut pits under the street trees
 - 36+ building archetypes (ribbon-slab, chamfered, twin-with-skybridge, terraced, deco setback, zigzag slab, H-plan pre-war, framed dark-glass tower, and more) built from instanced unit shapes
 - Four procedural facade languages — punched masonry, pier-and-spandrel strips, horizontal ribbon, curtain wall — with deep-set window reveals, corner quoins, loggia crowns, and radio masts
 - 12 vehicle types in flowing traffic, each a swept superellipse shell with a dark wraparound greenhouse, light dish hubs, and a continuous light bar — in two detail tiers (fine on the hero street, lean for district traffic seen from altitude)

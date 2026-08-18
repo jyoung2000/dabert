@@ -1003,7 +1003,10 @@ const GSIZE = 2100;
   const s = px / GSIZE, X = x => (x + GSIZE / 2) * s, Z = z => (z + GSIZE / 2) * s;
   const g = v => { const b = Math.round(v * 255); return `rgb(${b},${b},${b})`; };
   ctx.fillStyle = g(0.972); ctx.fillRect(0, 0, px, px);          // mainland plate — the metro continues past the rivers
-  ctx.fillStyle = g(0.87);                                       // rivers wrap the island, clearly a step darker
+  /* rivers are CUT out of the plate, so the glossy water plane beneath
+     shows through — sheen instead of painted grey */
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = '#000';
   for (let r = 0; r < px; r++) {
     const z = r / s - GSIZE / 2, az = Math.abs(z);
     if (az < 585) {
@@ -1015,6 +1018,7 @@ const GSIZE = 2100;
       if (w > 0) ctx.fillRect(X(bend(Math.sign(z) * 585) - w), r, 2 * w * s, 1.2);
     }
   }
+  ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = g(0.972);                                      // island plate
   for (let r = 0; r < px; r++) {
     const z = r / s - GSIZE / 2, hw = halfWidth(z);
@@ -1067,11 +1071,11 @@ const GSIZE = 2100;
   ctx.fillRect(X(-44), Z(80), 34 * s, 82 * s);
   ctx.strokeStyle = g(0.985); ctx.lineWidth = Math.max(1, 1.6 * s);
   ctx.strokeRect(X(-42), Z(83), 30 * s, 76 * s);
-  ctx.fillStyle = 'rgb(181,194,206)';
+  ctx.fillStyle = g(0.9);                                        // sandy shore apron under the water mesh
   ctx.beginPath();
-  ctx.ellipse(X(-27), Z(118), 12.5 * s, 20 * s, 0.25, 0, 6.29);
+  ctx.ellipse(X(-27), Z(118), 13.8 * s, 21.4 * s, 0.25, 0, 6.29);
   ctx.fill();
-  ctx.strokeStyle = g(0.82); ctx.lineWidth = Math.max(1, 1.7 * s); ctx.stroke();
+  ctx.strokeStyle = g(0.84); ctx.lineWidth = Math.max(1, 1.3 * s); ctx.stroke();
   ctx.restore();
   ctx.strokeStyle = g(0.84);                                     // seawall rim along the island banks
   ctx.lineWidth = Math.max(1.2, 2 * s);
@@ -1082,7 +1086,7 @@ const GSIZE = 2100;
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(GSIZE, GSIZE),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.97 })
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.97, alphaTest: 0.5 })
   );
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = P.shadows;
@@ -1090,7 +1094,7 @@ const GSIZE = 2100;
   /* horizon under-plane: the map edge sinks into fog instead of showing a table edge */
   const sea = new THREE.Mesh(
     new THREE.PlaneGeometry(4200, 4200),
-    new THREE.MeshStandardMaterial({ color: new THREE.Color().setScalar(0.945), roughness: 1 })
+    new THREE.MeshStandardMaterial({ color: new THREE.Color(0.862, 0.886, 0.912), roughness: 0.28, metalness: 0 })
   );
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = -0.06;
@@ -1208,35 +1212,130 @@ const streetParts = [];
     streetParts.push(part(Box(1.7, 0.1, 0.1), 0.2, { ry, x: sx + 0.8 * cR, y: 5.35, z: sz - 0.8 * sR }));
     streetParts.push(part(Box(0.55, 0.16, 0.22), 0.9, { ry, x: sx + 1.55 * cR, y: 5.3, z: sz - 1.55 * sR }));
   }
+  /* the pond edge: banked shore stones, reed clumps, lily pads, a dock */
+  {
+    const pc = [-27, 118], prx = 12.5, prz = 20, pra = 0.25;
+    const ca = Math.cos(pra), sa = Math.sin(pra);
+    const P2 = (u, k) => {
+      const ex = Math.cos(u) * prx * k, ez = Math.sin(u) * prz * k;
+      return [pc[0] + ex * ca - ez * sa, pc[1] + ex * sa + ez * ca];
+    };
+    for (let i = 0; i < 26; i++) {                           // half-sunk shore pebbles
+      const [sx2, sz2] = P2(i / 26 * Math.PI * 2 + rr(-0.06, 0.06), rr(0.99, 1.07));
+      streetParts.push(part(Sph(rr(0.3, 0.55), 7, 5), rr(0.48, 0.64), { x: sx2, y: 0.05, z: sz2, sy: rr(0.42, 0.58) }));
+    }
+    for (let i = 0; i < 12; i++) {                           // reed clumps leaning at the bank
+      const [sx2, sz2] = P2(rr(0, 6.28), rr(0.9, 0.99));
+      for (let j = 0; j < 3; j++)
+        streetParts.push(part(Cyl(0.03, 0.05, rr(0.8, 1.4), 5), rr(0.33, 0.46), { x: sx2 + rr(-0.28, 0.28), y: 0.4, z: sz2 + rr(-0.28, 0.28), rx: rr(-0.09, 0.09), rz: rr(-0.09, 0.09) }));
+    }
+    for (let i = 0; i < 6; i++) {                            // lily pads
+      const [sx2, sz2] = P2(rr(0, 6.28), rr(0.25, 0.68));
+      streetParts.push(part(Cyl(rr(0.3, 0.5), rr(0.3, 0.5), 0.03, 9), 0.7, { x: sx2, y: 0.05, z: sz2 }));
+    }
+    const [dxq, dzq] = P2(2.1, 0.9);                         // little viewing dock
+    streetParts.push(part(Box(2.2, 0.14, 3.4), 0.5, { x: dxq, y: 0.24, z: dzq, ry: -0.35 }));
+    for (const [oxq, ozq] of [[-0.9, -1.4], [0.9, -1.4], [-0.9, 1.4], [0.9, 1.4]])
+      streetParts.push(part(Box(0.16, 0.55, 0.16), 0.32, { x: dxq + oxq, y: 0.03, z: dzq + ozq, ry: -0.35 }));
+  }
   const m = new THREE.Mesh(mergeGeoms(streetParts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93 }));
   m.castShadow = P.shadows; m.receiveShadow = P.shadows; m.frustumCulled = false;
   scene.add(m);
 }
-const treeGeo = mergeGeoms([
-  part(Cyl(0.09, 0.13, 1.5, 7), 0.24, { y: 0.75 }),
-  part(Sph(1.15, MOBILE ? 7 : 9, MOBILE ? 5 : 7), 0.6, { y: 2.2, sy: 0.88 }),
-  part(Sph(0.7, MOBILE ? 6 : 8, MOBILE ? 4 : 6), 0.55, { y: 2.9, x: 0.4, z: 0.2 }),
-]);
+/* the pond itself: a calm glossy sheet inside the shore apron */
 {
-  const spots = [];
+  const wg = new THREE.CircleGeometry(1, MOBILE ? 24 : 40);
+  wg.scale(12.4, 19.8, 1);
+  wg.rotateX(-Math.PI / 2);
+  wg.rotateY(-0.25);
+  const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0.64, 0.705, 0.765), roughness: 0.14, metalness: 0 }));
+  water.position.set(-27, 0.025, 118);   // no projected shadows: the sheet reads as sky-reflecting
+  scene.add(water);
+}
+/* vinyl ducks drifting slow ellipses on the pond */
+const ducks = [];
+const duckGeo = mergeGeoms([
+  part(Sph(0.24, 9, 7), 0.95, { y: 0.16, sy: 0.78, sz: 1.3 }),
+  part(Sph(0.13, 8, 6), 0.95, { y: 0.38, z: 0.24 }),
+  part(Box(0.07, 0.04, 0.12), 0.28, { y: 0.37, z: 0.4 }),
+  part(Sph(0.09, 7, 5), 0.92, { y: 0.21, z: -0.28, sz: 0.7, rx: -0.5 }),
+]);
+const duckMesh = new THREE.InstancedMesh(duckGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }), 3);
+{
+  duckMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  duckMesh.frustumCulled = false;
+  const C = new THREE.Color();
+  for (let i = 0; i < 3; i++) {
+    ducks.push({ slot: i, cx: -27 + rr(-2, 2), cz: 118 + rr(-2.5, 2.5), r: rr(2, 3.8),
+                 a: rr(0, 6.28), spd: rr(0.1, 0.2) * (R() < 0.5 ? 1 : -1), sc: rr(0.8, 1.05), ph: R() * 9 });
+    duckMesh.setColorAt(i, C.setScalar(rr(0.9, 1)));
+  }
+  if (duckMesh.instanceColor) duckMesh.instanceColor.needsUpdate = true;
+  scene.add(duckMesh);
+}
+/* street & park trees: three smooth topiary species, tinted per tree */
+function treeVar(vi) {
+  const BW = MOBILE ? 7 : 9, BH = MOBILE ? 5 : 7, SW = MOBILE ? 6 : 8, SH = MOBILE ? 4 : 5;
+  const g = [];
+  if (vi === 1) {                                            // tall column
+    g.push(part(Cyl(0.08, 0.13, 2.1, 7), 0.24, { y: 1.05 }));
+    g.push(part(Sph(0.95, BW, BH), 0.58, { y: 2.7, sy: 0.92 }));
+    g.push(part(Sph(0.78, SW, SH), 0.63, { y: 3.55, x: 0.15 }));
+    g.push(part(Sph(0.6, SW, SH), 0.55, { y: 4.15, x: -0.12, z: 0.15 }));
+  } else if (vi === 2) {                                     // park lush spread
+    g.push(part(Cyl(0.12, 0.19, 1.5, 7), 0.22, { y: 0.75 }));
+    g.push(part(Sph(1.4, BW, BH), 0.6, { y: 2.6, sy: 0.82 }));
+    g.push(part(Sph(0.95, SW, SH), 0.55, { y: 3.2, x: 0.75, z: 0.2 }));
+    g.push(part(Sph(0.9, SW, SH), 0.65, { y: 2.3, x: -0.85, z: 0.35 }));
+    g.push(part(Sph(0.72, SW, SH), 0.58, { y: 3.05, z: -0.75 }));
+  } else {                                                   // street round
+    g.push(part(Cyl(0.09, 0.145, 1.6, 7), 0.24, { y: 0.8 }));
+    g.push(part(Sph(1.12, BW, BH), 0.6, { y: 2.35, sy: 0.9 }));
+    g.push(part(Sph(0.72, SW, SH), 0.55, { y: 2.95, x: 0.45, z: 0.18 }));
+    g.push(part(Sph(0.58, SW, SH), 0.64, { y: 1.95, x: -0.5, z: 0.28 }));
+  }
+  return mergeGeoms(g);
+}
+{
+  const spots = [];                                          // [x, z, species, scale]
   for (let z = -52; z <= 200; z += 17) {
     if (Math.abs(z - HERO_ST) < 10) continue;
-    if (R() < 0.8 && (z < 6 || z > 62)) spots.push([11.9, z + rr(-2, 2)]);   // gaps for the camera moves
-    if (R() < 0.8 && (z < 42 || z > 62)) spots.push([-11.9, z + rr(-2, 2)]);
+    if (R() < 0.8 && (z < 6 || z > 62)) spots.push([11.9, z + rr(-2, 2), MOBILE ? 0 : (R() < 0.62 ? 0 : 1), rr(0.85, 1.2)]);
+    if (R() < 0.8 && (z < 42 || z > 62)) spots.push([-11.9, z + rr(-2, 2), MOBILE ? 0 : (R() < 0.62 ? 0 : 1), rr(0.85, 1.2)]);
   }
   for (let i = 0; i < 18; i++) {                                             // park canopy
     const px2 = rr(-41, -13), pz2 = rr(84, 158);
     if (((px2 + 27) / 15) ** 2 + ((pz2 - 118) / 23) ** 2 < 1.15) continue;   // keep the pond clear
-    spots.push([px2, pz2]);
+    spots.push([px2, pz2, MOBILE ? 0 : 2, rr(0.9, 1.35)]);
   }
-  const trees = new THREE.InstancedMesh(treeGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }), spots.length);
-  const D3 = new THREE.Object3D();
-  spots.forEach((sp, i) => {
-    D3.position.set(sp[0], 0, sp[1]); D3.rotation.y = R() * 6.28;
-    D3.scale.setScalar(rr(0.8, 1.3)); D3.updateMatrix(); trees.setMatrixAt(i, D3.matrix);
+  const treeGeos = MOBILE ? [treeVar(0)] : [treeVar(0), treeVar(1), treeVar(2)];
+  const treeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+  const per = treeGeos.map(() => 0);
+  for (const sp of spots) per[sp[2]]++;
+  const D3 = new THREE.Object3D(), C = new THREE.Color(), slot = treeGeos.map(() => 0);
+  const treeMeshes = treeGeos.map((tg, vi) => {
+    const m2 = new THREE.InstancedMesh(tg, treeMat, Math.max(per[vi], 1));
+    m2.count = Math.max(per[vi], 1);
+    m2.castShadow = P.shadows; m2.frustumCulled = false;
+    scene.add(m2);
+    return m2;
   });
-  trees.castShadow = P.shadows; trees.frustumCulled = false;
-  scene.add(trees);
+  for (const sp of spots) {
+    const i = slot[sp[2]]++;
+    D3.position.set(sp[0], 0, sp[1]); D3.rotation.y = R() * 6.28;
+    D3.scale.setScalar(sp[3]); D3.updateMatrix();
+    treeMeshes[sp[2]].setMatrixAt(i, D3.matrix);
+    treeMeshes[sp[2]].setColorAt(i, C.setScalar(rr(0.88, 1.05)));
+  }
+  treeMeshes.forEach(m2 => { if (m2.instanceColor) m2.instanceColor.needsUpdate = true; });
+  if (!MOBILE) {                                             // square cut pits under the street trees
+    const pits = [];
+    for (const sp of spots) if (Math.abs(sp[0]) > 11)
+      pits.push(part(Box(1.5, 0.03, 1.5), 0.62, { x: sp[0], y: 0.015, z: sp[1] }));
+    const pm = new THREE.Mesh(mergeGeoms(pits), treeMat);
+    pm.frustumCulled = false; scene.add(pm);
+  }
 }
 let goDot, stopDot;
 {
@@ -2171,8 +2270,8 @@ function tick() {
   /* lens: long aerial → widen through the canyon → narrow planimetric finale */
   camera.fov = 34 + (58 - 34) * sstep(p, 0.45, 0.78) - (58 - (MOBILE ? 54 : 27)) * sstep(p, 0.84, 0.985);
   if (qs.get('fig')) {                                     // dev: figure close-up inspection
-    camera.position.set(3.4, 1.7, 102);
-    camera.lookAt(6.1, 0.5, 78);
+    camera.position.set(-11.5, 3.2, 100);
+    camera.lookAt(-27, 0.2, 117);
     camera.fov = 38;
   }
   camera.near = lerp(3.5, 0.16, sstep(p, 0.55, 0.92));
@@ -2312,6 +2411,15 @@ function tick() {
       ct.mesh.setMatrixAt(ct.slot, D3.matrix);
     }
     if (cats.length) { cats[0].mesh.instanceMatrix.needsUpdate = true; }
+  for (const dk of ducks) {                                  // pond ducks drift slow ellipses
+    dk.a += dk.spd * dt;
+    D3.position.set(dk.cx + Math.cos(dk.a) * dk.r, 0.045 + Math.sin(t * 1.3 + dk.ph) * 0.015, dk.cz + Math.sin(dk.a) * dk.r * 1.5);
+    D3.rotation.set(0, Math.atan2(-Math.sin(dk.a) * dk.spd, Math.cos(dk.a) * 1.5 * dk.spd), 0);
+    D3.scale.setScalar(dk.sc);
+    D3.updateMatrix();
+    duckMesh.setMatrixAt(dk.slot, D3.matrix);
+  }
+  duckMesh.instanceMatrix.needsUpdate = true;
   }
 
   /* ---- birds / planes / clouds ---- */
