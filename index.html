@@ -85,11 +85,11 @@ const MOBILE = tier === 'mobile';
 
 const PRESETS = {
   desktop: { dpr: 2,   shadows: true,  shadowMap: 2048, groundTex: 2048, mist: 3,
-             people: 109, cars: 34, parked: 45, birds: 44, planes: 3, clouds: 14, dogs: 6, cloudShadows: true },
+             people: 104, cars: 34, parked: 45, birds: 44, planes: 3, clouds: 12, dogs: 6, cloudShadows: true },
   tablet:  { dpr: 1.5, shadows: true,  shadowMap: 1024, groundTex: 2048, mist: 3,
              people: 108, cars: 26, parked: 40, birds: 34, planes: 3, clouds: 14, dogs: 4, cloudShadows: false },
   mobile:  { dpr: 1,   shadows: false, shadowMap: 512,  groundTex: 1024, mist: 2,
-             people: 57,  cars: 18, parked: 21, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
+             people: 55,  cars: 18, parked: 21, birds: 20, planes: 2, clouds: 10, dogs: 3, cloudShadows: false },
 };
 const P = PRESETS[tier];
 
@@ -243,12 +243,12 @@ function corridorClamp(x, z, h) {
  * ================================================================== */
 const districts = [
   { ox: 0, oz: 55, w: 172, h: 336, th: 0, avP: 54, stP: 40, avH: 8, stH: 4.5, gx: 0, gz: -2, hero: true },
-  { ox: 10, oz: 352, w: 440, h: 310, th: 0.24, avP: 48, stP: 36, avH: 7, stH: 4.2 },
-  { ox: -18, oz: -310, w: 480, h: 410, th: -0.38, avP: 58, stP: 42, avH: 8, stH: 4.5 },
-  { ox: -168, oz: 58, w: 240, h: 380, th: 0.14, avP: 44, stP: 30, avH: 6.5, stH: 4 },
-  { ox: 170, oz: 42, w: 240, h: 400, th: -0.2, avP: 46, stP: 34, avH: 6.5, stH: 4 },
-  { ox: -32, oz: 522, w: 340, h: 240, th: 0.5, avP: 42, stP: 32, avH: 6, stH: 4 },
-  { ox: 30, oz: -520, w: 400, h: 290, th: -0.6, avP: 40, stP: 30, avH: 6, stH: 4 },
+  { ox: 10, oz: 352, w: 440, h: 310, th: 0.24, avP: 46, stP: 35, avH: 5.4, stH: 3.2, sa: 2.4, ss: 1.8 },
+  { ox: -18, oz: -310, w: 480, h: 410, th: -0.38, avP: 55, stP: 40, avH: 6, stH: 3.4, sa: 2.6, ss: 1.9 },
+  { ox: -168, oz: 58, w: 240, h: 380, th: 0.14, avP: 42, stP: 29, avH: 5, stH: 3, sa: 2.2, ss: 1.7 },
+  { ox: 170, oz: 42, w: 240, h: 400, th: -0.2, avP: 44, stP: 33, avH: 5, stH: 3, sa: 2.2, ss: 1.7 },
+  { ox: -32, oz: 522, w: 340, h: 240, th: 0.5, avP: 40, stP: 31, avH: 4.8, stH: 3, sa: 2.1, ss: 1.6 },
+  { ox: 30, oz: -520, w: 400, h: 290, th: -0.6, avP: 38, stP: 29, avH: 4.8, stH: 3, sa: 2.1, ss: 1.6 },
 ];
 for (const d of districts) {
   d.cos = Math.cos(d.th); d.sin = Math.sin(d.th);
@@ -680,8 +680,9 @@ const cells = [];
 for (const d of districts) {
   const nk = Math.ceil((d.w / 2 + d.avP) / d.avP), nj = Math.ceil((d.h / 2 + d.stP) / d.stP);
   for (let k = -nk; k <= nk; k++) for (let j = -nj; j <= nj; j++) {
-    const x0 = k * d.avP + d.avH + SIDE_AV, x1 = (k + 1) * d.avP - d.avH - SIDE_AV;
-    const z0 = j * d.stP + d.stH + SIDE_ST, z1 = (j + 1) * d.stP - d.stH - SIDE_ST;
+    const sa = d.sa ?? SIDE_AV, ss = d.ss ?? SIDE_ST;
+    const x0 = k * d.avP + d.avH + sa, x1 = (k + 1) * d.avP - d.avH - sa;
+    const z0 = j * d.stP + d.stH + ss, z1 = (j + 1) * d.stP - d.stH - ss;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, W = x1 - x0, D = z1 - z0;
     const [wcx, wcz] = dWorld(d, cx, cz);
     if (claim(wcx, wcz) !== d) continue;
@@ -730,9 +731,9 @@ for (const c of cells) {
   /* reserved for the galleria block north of the park */
   if (c.d.hero && c.wcx > -44 && c.wcx < -10 && c.wcz > 166 && c.wcz < 196) continue;
   if (edge) {                                               // island rim: dense low slabs
-    addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.55, 0.8), D * rr(0.55, 0.8), clampH(cx, cz, rr(3.5, 9)), dressOpt);
-    addBuilding(cx + rr(-4, 4), cz + rr(-4, 4), W * rr(0.3, 0.45), D * rr(0.3, 0.45), clampH(cx, cz, rr(3, 6.5)), dressOpt);
-    if (R() < 0.5) addBuilding(cx + rr(-6, 6), cz + rr(-6, 6), W * rr(0.22, 0.34), D * rr(0.22, 0.34), clampH(cx, cz, rr(3, 7)), dressOpt);
+    addBuilding(cx + rr(-0.5, 0.5), cz + rr(-0.5, 0.5), W * rr(0.72, 0.92), D * rr(0.72, 0.92), clampH(cx, cz, rr(3.5, 9)), dressOpt);
+    addBuilding(cx + rr(-3, 3), cz + rr(-3, 3), W * rr(0.34, 0.48), D * rr(0.34, 0.48), clampH(cx, cz, rr(3, 6.5)), dressOpt);
+    if (R() < 0.5) addBuilding(cx + rr(-5, 5), cz + rr(-5, 5), W * rr(0.24, 0.36), D * rr(0.24, 0.36), clampH(cx, cz, rr(3, 7)), dressOpt);
     continue;
   }
   /* skyline shaping: midtown + downtown height clusters over the even tower spread */
@@ -741,21 +742,21 @@ for (const c of cells) {
   /* low-frequency height field: neighbors correlate, no white-noise skyline */
   const hf = 0.78 + 0.5 * (0.5 + 0.5 * Math.sin(c.wcx * 0.011 + 1.3) * Math.sin(c.wcz * 0.007 + 0.4));
   if (c.role === 'super') {
-    addBuilding(cx + rr(-1, 1), cz + rr(-1, 1), W * rr(0.62, 0.75), D * rr(0.62, 0.78), clampH(cx, cz, rr(150, 195) * clus), dressOpt);
+    addBuilding(cx + rr(-0.5, 0.5), cz + rr(-0.5, 0.5), W * rr(0.72, 0.86), D * rr(0.72, 0.88), clampH(cx, cz, rr(150, 195) * clus), dressOpt);
   } else if (c.role === 'tower') {
-    addBuilding(cx + rr(-2, 2) - W / 5, cz + rr(-1.5, 1.5), W * rr(0.44, 0.55), D * rr(0.62, 0.78), clampH(cx, cz, rr(78, 155) * clus), dressOpt);
-    addBuilding(cx + W / 3.6, cz + rr(-2, 2), W * rr(0.26, 0.34), D * rr(0.5, 0.7), clampH(cx, cz, rr(16, 42) * hf), dressOpt);
-    addBuilding(cx + W / 3.6, cz + (R() < 0.5 ? -1 : 1) * D / 3.2, W * rr(0.2, 0.28), D * rr(0.24, 0.32), clampH(cx, cz, rr(10, 26) * hf), dressOpt);
+    addBuilding(cx + rr(-1, 1) - W / 5, cz + rr(-0.8, 0.8), W * rr(0.52, 0.62), D * rr(0.74, 0.9), clampH(cx, cz, rr(78, 155) * clus), dressOpt);
+    addBuilding(cx + W / 3.4, cz + rr(-1, 1), W * rr(0.32, 0.4), D * rr(0.6, 0.8), clampH(cx, cz, rr(16, 42) * hf), dressOpt);
+    addBuilding(cx + W / 3.4, cz + (R() < 0.5 ? -1 : 1) * D / 3.2, W * rr(0.26, 0.34), D * rr(0.3, 0.38), clampH(cx, cz, rr(10, 26) * hf), dressOpt);
   } else {
     const r = R();
     if (r < 0.3) {
-      addBuilding(cx + rr(-1.5, 1.5), cz + rr(-1.5, 1.5), W * rr(0.7, 0.84), D * rr(0.72, 0.86), clampH(cx, cz, rr(16, 52) * hf), dressOpt);
+      addBuilding(cx + rr(-0.6, 0.6), cz + rr(-0.6, 0.6), W * rr(0.86, 0.96), D * rr(0.86, 0.97), clampH(cx, cz, rr(16, 52) * hf), dressOpt);
     } else if (r < 0.68) {
       for (const s of [-1, 1])
-        addBuilding(cx + s * W / 4 + rr(-1, 1), cz + rr(-1.5, 1.5), W * rr(0.38, 0.46), D * rr(0.66, 0.84), clampH(cx + s * W / 4, cz, rr(14, 52) * hf), dressOpt);
+        addBuilding(cx + s * W / 4 + rr(-0.4, 0.4), cz + rr(-0.6, 0.6), W * rr(0.44, 0.49), D * rr(0.82, 0.96), clampH(cx + s * W / 4, cz, rr(14, 52) * hf), dressOpt);
     } else {
       for (const sx of [-1, 1]) for (const sz of [-1, 1])
-        addBuilding(cx + sx * W / 4 + rr(-0.8, 0.8), cz + sz * D / 4 + rr(-0.8, 0.8), W * rr(0.36, 0.46), D * rr(0.38, 0.46), clampH(cx + sx * W / 4, cz + sz * D / 4, rr(12, 44) * hf), dressOpt);
+        addBuilding(cx + sx * W / 4 + rr(-0.35, 0.35), cz + sz * D / 4 + rr(-0.35, 0.35), W * rr(0.43, 0.49), D * rr(0.44, 0.49), clampH(cx + sx * W / 4, cz + sz * D / 4, rr(12, 44) * hf), dressOpt);
     }
   }
 }
@@ -790,7 +791,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 45 : 26;
+  const mstep = MOBILE ? 49 : 30;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
@@ -1633,103 +1634,162 @@ const dogs = [];
  * ================================================================== */
 function wheelsFor(g, r, hw, zs) {
   for (const sx of [-1, 1]) for (const sz of zs) {
-    g.push(part(Cyl(r, r, 0.22, 10), 0.08, { rz: Math.PI / 2, x: sx * hw, y: r, z: sz }));
-    if (!MOBILE) g.push(part(Cyl(r * 0.42, r * 0.42, 0.24, 8), 0.5, { rz: Math.PI / 2, x: sx * hw, y: r, z: sz }));   // hub
+    g.push(part(Cyl(r, r, 0.22, MOBILE ? 9 : 12), 0.08, { rz: Math.PI / 2, x: sx * hw, y: r, z: sz }));
+    if (!MOBILE) g.push(part(Cyl(r * 0.34, r * 0.34, 0.235, 8), 0.44, { rz: Math.PI / 2, x: sx * hw, y: r, z: sz }));   // hub
   }
 }
-/* side-profile reads: door seams + rocker line along each flank */
-function sideLines(g, hw2, len, beltY) {
-  for (const s of [-1, 1]) {
-    for (const zq of [len * 0.14, -len * 0.18])
-      g.push(part(Box(0.016, beltY * 0.62, 0.035), 0.42, { x: s * (hw2 + 0.004), y: beltY * 0.62, z: zq }));
-    g.push(part(Box(0.02, 0.11, len * 0.76), 0.4, { x: s * (hw2 + 0.004), y: 0.3, z: 0 }));
+/* ---- soft-shell vehicles ----------------------------------------------
+   Every body is one swept superellipse tube: rings along the length whose
+   corner sharpness is a per-station exponent, so a car fillets like an
+   injection-moulded toy while a van keeps flatter flanks. Glass is either a
+   canopy shell rising off the body (cars) or a band wrapping it (vans,
+   buses) — never a box stuck on top. Door seams and mirrors are gone: the
+   reference vehicles carry none, and dropping them pays for the sweep. */
+function shell(st, NS, tone) {
+  const pos = [], col = [], idx = [];
+  for (const [z, y0, y1, hw, n] of st) {
+    const yc = (y0 + y1) / 2, hh = (y1 - y0) / 2, p = 2 / n;
+    for (let a = 0; a < NS; a++) {
+      const t = a / NS * Math.PI * 2, c = Math.cos(t), s = Math.sin(t);
+      pos.push(hw * Math.sign(c) * Math.pow(Math.abs(c), p),
+               yc + hh * Math.sign(s) * Math.pow(Math.abs(s), p), z);
+      col.push(tone, tone, tone);
+    }
   }
-}
-/* mirrors, bumpers, head/taillights — the close-shot trim that sells "car" */
-function carTrim(g, hw2, fz, rz, beltY) {
-  for (const s of [-1, 1]) g.push(part(Box(0.07, 0.06, 0.15), 0.22, { x: s * (hw2 + 0.04), y: beltY + 0.26, z: fz - 1.3 }));
-  sideLines(g, hw2, fz - rz - 0.4, beltY);
-  g.push(part(Box(hw2 * 2 + 0.05, 0.17, 0.2), 0.28, { y: 0.42, z: fz }));
-  g.push(part(Box(hw2 * 2 + 0.05, 0.17, 0.2), 0.28, { y: 0.42, z: rz }));
-  for (const s of [-1, 1]) {
-    g.push(part(Box(0.28, 0.11, 0.06), 0.96, { x: s * (hw2 - 0.36), y: 0.68, z: fz + 0.05 }));
-    g.push(part(Box(0.24, 0.11, 0.06), 0.15, { x: s * (hw2 - 0.34), y: 0.68, z: rz - 0.05 }));
+  for (let i = 0; i < st.length - 1; i++) for (let a = 0; a < NS; a++) {
+    const q = i * NS + a, b = i * NS + (a + 1) % NS;
+    idx.push(q, b, q + NS, b, b + NS, q + NS);
   }
+  const L = st.length - 1, fa = pos.length / 3;
+  pos.push(0, (st[L][1] + st[L][2]) / 2, st[L][0] + 0.05); col.push(tone, tone, tone);
+  for (let a = 0; a < NS; a++) idx.push(fa, L * NS + a, L * NS + (a + 1) % NS);
+  const ra = pos.length / 3;
+  pos.push(0, (st[0][1] + st[0][2]) / 2, st[0][0] - 0.05); col.push(tone, tone, tone);
+  for (let a = 0; a < NS; a++) idx.push(ra, (a + 1) % NS, a);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return geo.toNonIndexed();
 }
+/* car body: full section amidships, tapering into a rounded nose and tail.
+   `soft` scales every end taper — 1 is a car, 0.2 keeps a van nearly full. */
+function bodyOf(L, hw, y0, y1, n, soft = 1, zc = 0) {
+  const f = L / 2, H = y1 - y0, e = soft;
+  return [
+    [zc - f,        y0 + 0.07 * e, y1 - H * 0.16 * e, hw * (1 - 0.30 * e), n * (1 - 0.25 * e)],
+    [zc - f * 0.87, y0 + 0.02 * e, y1 - H * 0.04 * e, hw * (1 - 0.12 * e), n * (1 - 0.10 * e)],
+    [zc - f * 0.5,  y0,            y1,                hw,                  n],
+    [zc + f * 0.1,  y0,            y1,                hw,                  n],
+    [zc + f * 0.62, y0,            y1 - H * 0.03 * e, hw * (1 - 0.01 * e), n],
+    [zc + f * 0.88, y0 + 0.02 * e, y1 - H * 0.13 * e, hw * (1 - 0.10 * e), n * (1 - 0.10 * e)],
+    [zc + f,        y0 + 0.08 * e, y1 - H * 0.30 * e, hw * (1 - 0.30 * e), n * (1 - 0.25 * e)],
+  ];
+}
+/* boxy volumes — van shells, cargo bodies, bus hulls — in four stations */
+function boxOf(L, hw, y0, y1, n, zc = 0) {
+  const f = L / 2, H = y1 - y0;
+  return [
+    [zc - f,       y0 + H * 0.05, y1 - H * 0.05, hw * 0.93, n],
+    [zc - f * 0.9, y0,            y1,            hw,        n],
+    [zc + f * 0.9, y0,            y1,            hw,        n],
+    [zc + f,       y0 + H * 0.05, y1 - H * 0.05, hw * 0.93, n],
+  ];
+}
+/* the greenhouse as its own soft canopy, rising out of the beltline */
+function cabinOf(z0, z1, hw, yB, yT, n) {
+  const D = z1 - z0, H = yT - yB;
+  return [
+    [z0,             yB, yB + H * 0.62, hw * 0.70, n * 0.8],
+    [z0 + D * 0.28,  yB, yT,            hw * 0.95, n],
+    [z0 + D * 0.70,  yB, yT,            hw,        n],
+    [z1,             yB, yB + H * 0.52, hw * 0.62, n * 0.8],
+  ];
+}
+/* a dark window band wrapping the hull, tapered at both ends so its caps
+   tuck back inside the body instead of showing as discs */
+function bandOf(z0, z1, hw, y0, y1, n) {
+  const D = z1 - z0, H = y1 - y0;
+  return [
+    [z0,            y0 + H * 0.2, y1 - H * 0.2, hw * 0.86, n],
+    [z0 + D * 0.05, y0,           y1,           hw + 0.012, n],
+    [z1 - D * 0.05, y0,           y1,           hw + 0.012, n],
+    [z1,            y0 + H * 0.2, y1 - H * 0.2, hw * 0.86, n],
+  ];
+}
+const BNS = MOBILE ? 8 : 10, GNS = MOBILE ? 6 : 8;
+/* the continuous light strip across nose and tail, as in the references */
+const lamps = (g, hw, f, y) => {
+  g.push(part(Box(hw * 1.22, 0.06, 0.13), 0.99, { y, z: f + 0.02 }));
+  g.push(part(Box(hw * 1.16, 0.06, 0.13), 0.28, { y, z: -f - 0.02 }));
+};
 function makeSedan(taxi) {
   const g = [];
-  g.push(part(Box(1.74, 0.55, 4.3), 1, { y: 0.62 }));
-  g.push(part(Box(1.58, 0.48, 2.05), 0.15, { y: 1.12, z: -0.15 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.3, 1.7), 0.16, { x: s * 0.88, y: 1.12, z: -0.15 }));
-  if (taxi) g.push(part(Box(0.52, 0.16, 0.2), 0.85, { y: 1.42, z: -0.15 }));
-  carTrim(g, 0.87, 2.13, -2.13, 0.85);
-  wheelsFor(g, 0.33, 0.8, [1.35, -1.35]);
+  g.push(shell(bodyOf(4.6, 0.87, 0.22, 0.90, 5.2), BNS, 1));
+  g.push(shell(cabinOf(-1.72, 0.86, 0.78, 0.56, 1.24, 4.8), GNS, 0.13));
+  lamps(g, 0.87, 2.3, 0.58);
+  if (taxi) g.push(part(Box(0.5, 0.15, 0.2), 0.85, { y: 1.44, z: -0.3 }));
+  wheelsFor(g, 0.30, 0.80, [1.38, -1.38]);
   return mergeGeoms(g);
 }
 function makeSUV() {
   const g = [];
-  g.push(part(Box(1.84, 0.78, 4.35), 1, { y: 0.72 }));
-  g.push(part(Box(1.68, 0.5, 2.6), 0.15, { y: 1.35, z: -0.2 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.34, 2.2), 0.16, { x: s * 0.93, y: 1.34, z: -0.2 }));
-  g.push(part(Box(1.5, 0.06, 2.2), 0.3, { y: 1.63, z: -0.2 }));
-  carTrim(g, 0.92, 2.15, -2.15, 1.0);
-  wheelsFor(g, 0.37, 0.85, [1.35, -1.35]);
+  g.push(shell(bodyOf(4.7, 0.92, 0.26, 1.10, 5.6), BNS, 1));
+  g.push(shell(cabinOf(-1.88, 0.98, 0.84, 0.70, 1.50, 5.2), GNS, 0.13));
+  g.push(part(Box(1.26, 0.05, 1.9), 0.34, { y: 1.53, z: -0.5 }));            // roof rails
+  lamps(g, 0.92, 2.35, 0.72);
+  wheelsFor(g, 0.34, 0.85, [1.42, -1.42]);
   return mergeGeoms(g);
 }
 function makeVan() {
   const g = [];
-  g.push(part(Box(1.9, 1.22, 4.9), 1, { y: 0.95 }));
-  g.push(part(Box(1.7, 0.5, 0.12), 0.15, { y: 1.28, z: 2.32, rx: 0.22 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.4, 2.7), 0.16, { x: s * 0.96, y: 1.25, z: -0.4 }));
-  carTrim(g, 0.95, 2.43, -2.43, 1.1);
-  wheelsFor(g, 0.34, 0.86, [1.55, -1.55]);
+  g.push(shell(boxOf(5.2, 0.95, 0.30, 1.70, 5.5), BNS, 1));
+  g.push(shell(bandOf(0.5, 2.5, 0.95, 1.06, 1.48, 5.5), GNS, 0.13));
+  lamps(g, 0.95, 2.6, 0.6);
+  wheelsFor(g, 0.34, 0.86, [1.6, -1.6]);
   return mergeGeoms(g);
 }
 function makeTruck() {
   const g = [];
-  g.push(part(Box(1.9, 1.05, 1.7), 1, { y: 0.95, z: 1.85 }));
-  g.push(part(Box(1.7, 0.5, 0.12), 0.14, { y: 1.35, z: 2.6, rx: 0.2 }));
-  g.push(part(Box(2.05, 1.9, 3.2), 0.92, { y: 1.35, z: -0.55 }));
-  carTrim(g, 0.95, 2.66, -2.1, 1.1);
+  g.push(shell(boxOf(3.7, 1.02, 0.55, 2.42, 8, -0.8), BNS, 0.93));          // cargo body
+  g.push(shell(boxOf(2.0, 0.95, 0.32, 1.98, 5.5, 1.95), BNS, 1));           // cab
+  g.push(shell(bandOf(1.55, 2.9, 0.95, 1.32, 1.82, 5.5), GNS, 0.13));
+  lamps(g, 0.95, 2.9, 0.62);
   wheelsFor(g, 0.38, 0.88, [1.9, -1.4]);
   return mergeGeoms(g);
 }
 function makeBus() {
   const g = [];
-  g.push(part(Box(2.3, 2.45, 10), 1, { y: 1.55 }));
-  g.push(part(Box(2.36, 0.62, 8.6), 0.15, { y: 2.15 }));
-  g.push(part(Box(2.1, 0.66, 0.14), 0.15, { y: 2.0, z: 4.97 }));
-  carTrim(g, 1.15, 4.96, -4.96, 1.85);
+  g.push(shell(boxOf(10.4, 1.15, 0.35, 2.92, 7), BNS, 1));
+  g.push(shell(bandOf(-4.7, 4.8, 1.15, 1.58, 2.42, 7), GNS, 0.13));
+  lamps(g, 1.15, 5.2, 0.62);
   wheelsFor(g, 0.42, 1.0, [3.3, -3.3]);
   return mergeGeoms(g);
 }
 function makeHatch() {
   const g = [];
-  g.push(part(Box(1.68, 0.52, 3.6), 1, { y: 0.58 }));
-  g.push(part(Box(1.54, 0.5, 1.95), 0.15, { y: 1.08, z: -0.45 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.32, 1.6), 0.16, { x: s * 0.85, y: 1.08, z: -0.45 }));
-  carTrim(g, 0.84, 1.78, -1.78, 0.8);
-  wheelsFor(g, 0.31, 0.78, [1.1, -1.1]);
+  g.push(shell(bodyOf(3.9, 0.84, 0.21, 0.88, 5.2), BNS, 1));
+  g.push(shell(cabinOf(-1.32, 0.70, 0.75, 0.55, 1.21, 4.8), GNS, 0.13));
+  lamps(g, 0.84, 1.95, 0.56);
+  wheelsFor(g, 0.29, 0.78, [1.14, -1.14]);
   return mergeGeoms(g);
 }
 function makePickup() {
   const g = [];
-  g.push(part(Box(1.86, 0.6, 5.0), 1, { y: 0.62 }));
-  g.push(part(Box(1.76, 0.85, 1.7), 1, { y: 1.1, z: 0.45 }));
-  g.push(part(Box(1.6, 0.45, 0.12), 0.15, { y: 1.5, z: 1.28, rx: 0.24 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.09, 0.42, 2.15), 0.85, { x: s * 0.88, y: 1.12, z: -1.35 }));
-  g.push(part(Box(1.85, 0.42, 0.09), 0.85, { y: 1.12, z: -2.42 }));
-  g.push(part(Box(1.66, 0.06, 2.1), 0.3, { y: 0.95, z: -1.35 }));
-  carTrim(g, 0.93, 2.48, -2.48, 0.95);
+  g.push(shell(bodyOf(5.2, 0.9, 0.24, 0.98, 5.6), BNS, 1));
+  g.push(shell(cabinOf(-0.24, 1.36, 0.79, 0.52, 1.44, 5.0), GNS, 0.13));
+  for (const s of [-1, 1]) g.push(part(Box(0.1, 0.4, 2.3), 0.9, { x: s * 0.86, y: 1.2, z: -1.4 }));
+  g.push(part(Box(1.82, 0.4, 0.1), 0.9, { y: 1.2, z: -2.5 }));              // tailgate
+  lamps(g, 0.9, 2.6, 0.6);
   wheelsFor(g, 0.36, 0.9, [1.6, -1.6]);
   return mergeGeoms(g);
 }
 function makeCoupe() {
   const g = [];
-  g.push(part(Box(1.72, 0.44, 4.0), 1, { y: 0.5 }));
-  g.push(part(Box(1.5, 0.38, 1.7), 0.15, { y: 0.9, z: -0.35 }));
-  carTrim(g, 0.86, 1.98, -1.98, 0.68);
-  wheelsFor(g, 0.31, 0.8, [1.25, -1.25]);
+  g.push(shell(bodyOf(4.4, 0.86, 0.20, 0.82, 5.0), BNS, 1));
+  g.push(shell(cabinOf(-1.42, 0.38, 0.73, 0.52, 1.12, 4.6), GNS, 0.13));
+  lamps(g, 0.86, 2.2, 0.52);
+  wheelsFor(g, 0.29, 0.80, [1.28, -1.28]);
   return mergeGeoms(g);
 }
 function makeScooter() {
@@ -1745,22 +1805,21 @@ function makeScooter() {
 }
 function makeFlatbed() {
   const g = [];
-  g.push(part(Box(1.9, 1.05, 1.7), 1, { y: 0.95, z: 2.1 }));
-  g.push(part(Box(1.7, 0.5, 0.12), 0.14, { y: 1.35, z: 2.85, rx: 0.2 }));
-  g.push(part(Box(2.0, 0.3, 4.2), 0.85, { y: 0.75, z: -0.85 }));
-  g.push(part(Box(1.3, 0.9, 1.2), 0.6, { y: 1.35, z: -0.4 }));               // crates
-  g.push(part(Box(0.9, 0.6, 0.9), 0.72, { y: 1.2, z: -1.9 }));
-  carTrim(g, 0.95, 2.9, -2.9, 1.1);
+  g.push(shell(boxOf(2.0, 0.95, 0.32, 1.95, 5.5, 2.15), BNS, 1));           // cab
+  g.push(shell(bandOf(1.75, 3.1, 0.95, 1.3, 1.8, 5.5), GNS, 0.13));
+  g.push(part(Box(2.0, 0.28, 4.4), 0.85, { y: 0.78, z: -0.9 }));            // deck
+  g.push(part(Box(1.3, 0.9, 1.2), 0.6, { y: 1.36, z: -0.45 }));             // crates
+  g.push(part(Box(0.9, 0.6, 0.9), 0.72, { y: 1.21, z: -1.95 }));
+  lamps(g, 0.95, 3.1, 0.6);
   wheelsFor(g, 0.38, 0.9, [2.2, -1.6]);
   return mergeGeoms(g);
 }
 function makeLimo() {
   const g = [];
-  g.push(part(Box(1.76, 0.5, 6.4), 1, { y: 0.58 }));
-  g.push(part(Box(1.6, 0.44, 3.6), 0.12, { y: 1.04, z: -0.5 }));
-  for (const s of [-1, 1]) g.push(part(Box(0.02, 0.28, 3.3), 0.14, { x: s * 0.89, y: 1.04, z: -0.5 }));
-  carTrim(g, 0.88, 3.15, -3.15, 0.8);
-  wheelsFor(g, 0.32, 0.82, [2.3, -2.3]);
+  g.push(shell(bodyOf(6.6, 0.88, 0.22, 0.90, 5.2), BNS, 1));
+  g.push(shell(cabinOf(-2.62, 1.06, 0.79, 0.58, 1.22, 4.8), GNS, 0.12));
+  lamps(g, 0.88, 3.3, 0.58);
+  wheelsFor(g, 0.30, 0.82, [2.32, -2.32]);
   return mergeGeoms(g);
 }
 const vehicleGeos = [makeSedan(false), makeSedan(true), makeSUV(), makeVan(), makeTruck(), makeBus(), makeHatch(), makePickup(), makeCoupe(), makeScooter(), makeFlatbed(), makeLimo()];
