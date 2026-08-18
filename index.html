@@ -791,18 +791,18 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
 /* ---- outer boroughs: low fabric across the rivers on every side, fading into the fog ---- */
 {
   setD(districts[0]);
-  const mstep = MOBILE ? 49 : 26;
+  const mstep = MOBILE ? 49 : 22;
   for (let wx = -980; wx <= 980; wx += mstep) for (let wz = -1040; wz <= 1040; wz += mstep) {
     const od = outDist(wx, wz);
     if (od < riverW(wz) + 6) continue;
     if (Math.abs(wz - 330) < 16 && wx > 150) continue;       // bridge corridors stay clear
     if (Math.abs(wz + 60) < 16 && wx < -150) continue;
     const hsh = R();
-    if (hsh < 0.18) continue;                                // yards and gaps
+    if (hsh < 0.12) continue;                                // yards and gaps
     curPhase = hsh > 0.9 ? 0.5 : 0;                          // borough fabric: punched, a few ribbon slabs
     const near = Math.exp(-(od - 66) / 260);                 // taller toward the shorelines
     let h = rr(3.5, 8 + 36 * near);
-    if (hsh > 0.985) h = rr(26, 58) * near + 12;             // rare mid-rise cluster
+    if (hsh > 0.972) h = rr(26, 58) * near + 12;             // mid-rise clusters punctuate the field
     h = Math.max(3.1, Math.round(h / 3.1) * 3.1);
     const bw = rr(8, 15), bd = rr(8, 15);
     const ry = (wx > 0 ? 0.22 : -0.18) + (Math.abs(wz) > 640 ? (wz > 0 ? 0.32 : -0.36) : 0) + rr(-0.04, 0.04);
@@ -810,6 +810,7 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
     const win = winToneFor(c);
     const jx = wx + rr(-5, 5), jz = wz + 2 + rr(-5, 5);
     addShape(0, jx, 0, jz, bw, h, bd, c, win, ry);
+    if (od > 200) continue;                                  // far field: the mass alone reads
     const rrr = R();
     if (rrr < 0.4) addShape(3, jx, h, jz, bw * 0.95, rr(1.8, 3.5), bd * 0.95, c * 0.9, c * 0.9, ry + (R() < 0.5 ? 0 : Math.PI / 2));
     else if (rrr < 0.55) addShape(1, jx, h, jz, bw * 0.95, rr(1.5, 3), bd * 0.95, c, win, ry);
@@ -817,10 +818,10 @@ addBuilding(-67, 140, 18, 15, 250, { landmark: true, c: 0.3 });
   }
   /* far ring (desktop): chunky silhouette slabs past the borough field, so
      the fabric ghosts all the way into the haze instead of stopping short */
-  if (!MOBILE) for (let wx = -1650; wx <= 1650; wx += 66) for (let wz = -1650; wz <= 1650; wz += 66) {
+  if (!MOBILE) for (let wx = -1650; wx <= 1650; wx += 62) for (let wz = -1650; wz <= 1650; wz += 62) {
     if (Math.abs(wx) < 1000 && Math.abs(wz) < 1060) continue;
     const hsh = R();
-    if (hsh < 0.26) continue;
+    if (hsh < 0.19) continue;
     curPhase = 0;
     let h = rr(5, 16);
     if (hsh > 0.93) h = rr(20, 48);                          // far towers punctuate the haze
@@ -1071,11 +1072,11 @@ const GSIZE = 2100;
   ctx.fillRect(X(-44), Z(80), 34 * s, 82 * s);
   ctx.strokeStyle = g(0.985); ctx.lineWidth = Math.max(1, 1.6 * s);
   ctx.strokeRect(X(-42), Z(83), 30 * s, 76 * s);
-  ctx.fillStyle = g(0.9);                                        // sandy shore apron under the water mesh
+  ctx.fillStyle = g(0.918);                                      // the dog run: packed ground inside its fence
   ctx.beginPath();
   ctx.ellipse(X(-27), Z(118), 13.8 * s, 21.4 * s, 0.25, 0, 6.29);
   ctx.fill();
-  ctx.strokeStyle = g(0.84); ctx.lineWidth = Math.max(1, 1.3 * s); ctx.stroke();
+  ctx.strokeStyle = g(0.87); ctx.lineWidth = Math.max(1, 1.5 * s); ctx.stroke();
   ctx.restore();
   ctx.strokeStyle = g(0.84);                                     // seawall rim along the island banks
   ctx.lineWidth = Math.max(1.2, 2 * s);
@@ -1117,7 +1118,8 @@ const streetParts = [];
     paint.push(part(Box(0.18, 0.04, 3.2), 0.74, { x: 0, y: 0.04, z }));
   for (const [mx, mz] of [[-1.8, 44], [2.2, 57.5], [-2.6, 70], [1.4, 12], [-1.2, 88], [3, 118]])
     paint.push(part(Cyl(0.55, 0.55, 0.025, 12), 0.8, { x: mx, y: 0.03, z: mz }));   // manholes
-  paint.push(part(Box(13.2, 0.05, 0.5), 0.95, { x: 0, y: 0.05, z: STOP_LINE }));
+  paint.push(part(Box(6.4, 0.05, 0.5), 0.95, { x: -4.2, y: 0.05, z: STOP_LINE }));
+  paint.push(part(Box(6.4, 0.05, 0.5), 0.95, { x: 4.2, y: 0.05, z: 2 * HERO_ST - STOP_LINE }));
   paint.push(part(Box(0.4, 0.14, 300), 0.88, { x: -AV_HALF, y: 0.07, z: 55 }));
   paint.push(part(Box(0.4, 0.14, 300), 0.88, { x: AV_HALF, y: 0.07, z: 55 }));
   /* planter beds with hedges + corner bollards (the ref-5 sidewalk language) */
@@ -1212,88 +1214,96 @@ const streetParts = [];
     streetParts.push(part(Box(1.7, 0.1, 0.1), 0.2, { ry, x: sx + 0.8 * cR, y: 5.35, z: sz - 0.8 * sR }));
     streetParts.push(part(Box(0.55, 0.16, 0.22), 0.9, { ry, x: sx + 1.55 * cR, y: 5.3, z: sz - 1.55 * sR }));
   }
-  /* the pond edge: banked shore stones, reed clumps, lily pads, a dock */
+  /* the dog run: rail fence with a gate, shrub clumps, agility props, benches */
   {
-    const pc = [-27, 118], prx = 12.5, prz = 20, pra = 0.25;
+    const pc = [-27, 118], prx = 12.6, prz = 20.2, pra = 0.25;
     const ca = Math.cos(pra), sa = Math.sin(pra);
     const P2 = (u, k) => {
       const ex = Math.cos(u) * prx * k, ez = Math.sin(u) * prz * k;
       return [pc[0] + ex * ca - ez * sa, pc[1] + ex * sa + ez * ca];
     };
-    for (let i = 0; i < 26; i++) {                           // half-sunk shore pebbles
-      const [sx2, sz2] = P2(i / 26 * Math.PI * 2 + rr(-0.06, 0.06), rr(0.99, 1.07));
-      streetParts.push(part(Sph(rr(0.3, 0.55), 7, 5), rr(0.48, 0.64), { x: sx2, y: 0.05, z: sz2, sy: rr(0.42, 0.58) }));
+    const NF = 28;
+    for (let i = 0; i < NF; i++) {
+      const u = i / NF * Math.PI * 2;
+      const gap = Math.abs(((u - 1.85 + Math.PI) % (Math.PI * 2)) - Math.PI) < 0.26;   // gateway
+      const [fx, fz] = P2(u, 1);
+      if (!gap) streetParts.push(part(Cyl(0.05, 0.062, 1.06, 6), 0.42, { x: fx, y: 0.53, z: fz }));
+      const [gx, gz] = P2(u + Math.PI * 2 / NF, 1);
+      const dxf = gx - fx, dzf = gz - fz, len = Math.hypot(dxf, dzf);
+      if (gap || len > 5) continue;
+      const ryf = Math.atan2(dxf, dzf);
+      for (const yq of [0.44, 0.86])
+        streetParts.push(part(Box(0.045, 0.07, len), 0.5, { x: (fx + gx) / 2, y: yq, z: (fz + gz) / 2, ry: ryf }));
     }
-    for (let i = 0; i < 12; i++) {                           // reed clumps leaning at the bank
-      const [sx2, sz2] = P2(rr(0, 6.28), rr(0.9, 0.99));
-      for (let j = 0; j < 3; j++)
-        streetParts.push(part(Cyl(0.03, 0.05, rr(0.8, 1.4), 5), rr(0.33, 0.46), { x: sx2 + rr(-0.28, 0.28), y: 0.4, z: sz2 + rr(-0.28, 0.28), rx: rr(-0.09, 0.09), rz: rr(-0.09, 0.09) }));
+    for (let i = 0; i < 22; i++) {                           // light greenery: low shrubs hugging the rail
+      const [bx2, bz2] = P2(rr(0, 6.28), rr(0.84, 0.99));
+      const bs = rr(0.3, 0.56);
+      streetParts.push(part(Sph(bs, 8, 6), rr(0.62, 0.76), { x: bx2, y: bs * 0.5, z: bz2, sy: 0.6 }));
+      if (R() < 0.7) streetParts.push(part(Sph(bs * 0.66, 7, 5), rr(0.6, 0.74), { x: bx2 + rr(-0.45, 0.45), y: bs * 0.38, z: bz2 + rr(-0.45, 0.45), sy: 0.6 }));
     }
-    for (let i = 0; i < 6; i++) {                            // lily pads
-      const [sx2, sz2] = P2(rr(0, 6.28), rr(0.25, 0.68));
-      streetParts.push(part(Cyl(rr(0.3, 0.5), rr(0.3, 0.5), 0.03, 9), 0.7, { x: sx2, y: 0.05, z: sz2 }));
+    for (let i = 0; i < 9; i++) {                            // grass tufts across the run
+      const [bx2, bz2] = P2(rr(0, 6.28), rr(0.3, 0.72));
+      streetParts.push(part(Sph(rr(0.26, 0.44), 7, 5), rr(0.66, 0.8), { x: bx2, y: 0.09, z: bz2, sy: 0.4 }));
     }
-    const [dxq, dzq] = P2(2.1, 0.9);                         // little viewing dock
-    streetParts.push(part(Box(2.2, 0.14, 3.4), 0.5, { x: dxq, y: 0.24, z: dzq, ry: -0.35 }));
-    for (const [oxq, ozq] of [[-0.9, -1.4], [0.9, -1.4], [-0.9, 1.4], [0.9, 1.4]])
-      streetParts.push(part(Box(0.16, 0.55, 0.16), 0.32, { x: dxq + oxq, y: 0.03, z: dzq + ozq, ry: -0.35 }));
+    const [jx, jz] = P2(0.5, 0.42);                          // hurdle
+    for (const sq of [-1, 1]) streetParts.push(part(Box(0.09, 0.85, 0.09), 0.36, { x: jx + sq * 0.8, y: 0.42, z: jz }));
+    streetParts.push(part(Box(1.75, 0.09, 0.09), 0.9, { x: jx, y: 0.66, z: jz }));
+    const [ax, az] = P2(3.5, 0.45);                          // A-frame ramp
+    for (const sq of [-1, 1]) streetParts.push(part(Box(1.5, 0.08, 1.7), 0.72, { x: ax, y: 0.5, z: az + sq * 0.72, rx: sq * 0.62 }));
+    const [tx, tz] = P2(5.1, 0.5);                           // play tunnel
+    streetParts.push(part(Cyl(0.62, 0.62, 2.4, 10), 0.66, { x: tx, y: 0.62, z: tz, rz: Math.PI / 2, ry: 0.7 }));
+    for (const [bu, bk] of [[2.4, 0.86], [4.4, 0.86]]) {     // benches facing in
+      const [ox2, oz2] = P2(bu, bk);
+      const ryb = Math.atan2(pc[0] - ox2, pc[1] - oz2);
+      streetParts.push(part(Box(1.9, 0.1, 0.5), 0.55, { x: ox2, y: 0.48, z: oz2, ry: ryb }));
+      streetParts.push(part(Box(1.9, 0.42, 0.08), 0.5, { x: ox2, y: 0.7, z: oz2 - 0.2, ry: ryb }));
+      for (const sq of [-0.75, 0.75])
+        streetParts.push(part(Box(0.1, 0.46, 0.4), 0.36, { x: ox2 + sq * Math.cos(ryb), y: 0.23, z: oz2 - sq * Math.sin(ryb), ry: ryb }));
+    }
+    for (const bu of [1.2, 4.9]) {                           // water bowls
+      const [ox2, oz2] = P2(bu, 0.78);
+      streetParts.push(part(Cyl(0.26, 0.2, 0.14, 9), 0.46, { x: ox2, y: 0.07, z: oz2 }));
+    }
   }
   const m = new THREE.Mesh(mergeGeoms(streetParts), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.93 }));
   m.castShadow = P.shadows; m.receiveShadow = P.shadows; m.frustumCulled = false;
   scene.add(m);
 }
-/* the pond itself: a calm glossy sheet inside the shore apron */
-{
-  const wg = new THREE.CircleGeometry(1, MOBILE ? 24 : 40);
-  wg.scale(12.4, 19.8, 1);
-  wg.rotateX(-Math.PI / 2);
-  wg.rotateY(-0.25);
-  const water = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0.64, 0.705, 0.765), roughness: 0.14, metalness: 0 }));
-  water.position.set(-27, 0.025, 118);   // no projected shadows: the sheet reads as sky-reflecting
-  scene.add(water);
-}
-/* vinyl ducks drifting slow ellipses on the pond */
-const ducks = [];
-const duckGeo = mergeGeoms([
-  part(Sph(0.24, 9, 7), 0.95, { y: 0.16, sy: 0.78, sz: 1.3 }),
-  part(Sph(0.13, 8, 6), 0.95, { y: 0.38, z: 0.24 }),
-  part(Box(0.07, 0.04, 0.12), 0.28, { y: 0.37, z: 0.4 }),
-  part(Sph(0.09, 7, 5), 0.92, { y: 0.21, z: -0.28, sz: 0.7, rx: -0.5 }),
-]);
-const duckMesh = new THREE.InstancedMesh(duckGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5 }), 3);
-{
-  duckMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  duckMesh.frustumCulled = false;
-  const C = new THREE.Color();
-  for (let i = 0; i < 3; i++) {
-    ducks.push({ slot: i, cx: -27 + rr(-2, 2), cz: 118 + rr(-2.5, 2.5), r: rr(2, 3.8),
-                 a: rr(0, 6.28), spd: rr(0.1, 0.2) * (R() < 0.5 ? 1 : -1), sc: rr(0.8, 1.05), ph: R() * 9 });
-    duckMesh.setColorAt(i, C.setScalar(rr(0.9, 1)));
-  }
-  if (duckMesh.instanceColor) duckMesh.instanceColor.needsUpdate = true;
-  scene.add(duckMesh);
-}
 /* street & park trees: three smooth topiary species, tinted per tree */
 function treeVar(vi) {
-  const BW = MOBILE ? 7 : 9, BH = MOBILE ? 5 : 7, SW = MOBILE ? 6 : 8, SH = MOBILE ? 4 : 5;
+  const BW = MOBILE ? 7 : 10, BH = MOBILE ? 5 : 8, SW = MOBILE ? 6 : 8, SH = MOBILE ? 4 : 6;
   const g = [];
+  /* a limb: tapered, angled out of the trunk into the canopy it supports */
+  const limb = (y, x, z, len, rot, rz) => g.push(part(Cyl(0.038, 0.072, len, 5), 0.26, { y, x, z, rx: rot, rz }));
   if (vi === 1) {                                            // tall column
-    g.push(part(Cyl(0.08, 0.13, 2.1, 7), 0.24, { y: 1.05 }));
-    g.push(part(Sph(0.95, BW, BH), 0.58, { y: 2.7, sy: 0.92 }));
-    g.push(part(Sph(0.78, SW, SH), 0.63, { y: 3.55, x: 0.15 }));
-    g.push(part(Sph(0.6, SW, SH), 0.55, { y: 4.15, x: -0.12, z: 0.15 }));
+    g.push(part(Cyl(0.075, 0.135, 2.15, 7), 0.24, { y: 1.07 }));
+    g.push(part(Cyl(0.135, 0.21, 0.28, 7), 0.22, { y: 0.14 }));               // root flare
+    limb(2.05, 0.13, 0, 0.6, 0, -0.42);
+    limb(2.35, 0, -0.11, 0.55, 0.4, 0);
+    g.push(part(Sph(0.94, BW, BH), 0.58, { y: 2.72, sy: 0.92 }));
+    g.push(part(Sph(0.76, SW, SH), 0.63, { y: 3.56, x: 0.15 }));
+    g.push(part(Sph(0.58, SW, SH), 0.55, { y: 4.14, x: -0.12, z: 0.15 }));
+    g.push(part(Sph(0.52, SW, SH), 0.6, { y: 3.15, x: -0.5, z: -0.3 }));
   } else if (vi === 2) {                                     // park lush spread
-    g.push(part(Cyl(0.12, 0.19, 1.5, 7), 0.22, { y: 0.75 }));
-    g.push(part(Sph(1.4, BW, BH), 0.6, { y: 2.6, sy: 0.82 }));
-    g.push(part(Sph(0.95, SW, SH), 0.55, { y: 3.2, x: 0.75, z: 0.2 }));
-    g.push(part(Sph(0.9, SW, SH), 0.65, { y: 2.3, x: -0.85, z: 0.35 }));
-    g.push(part(Sph(0.72, SW, SH), 0.58, { y: 3.05, z: -0.75 }));
+    g.push(part(Cyl(0.11, 0.185, 1.55, 7), 0.22, { y: 0.77 }));
+    g.push(part(Cyl(0.185, 0.3, 0.3, 7), 0.2, { y: 0.15 }));
+    limb(1.6, 0.42, 0.12, 0.95, 0, -0.72);
+    limb(1.62, -0.45, 0.2, 0.95, 0, 0.75);
+    limb(1.75, 0, -0.42, 0.85, 0.68, 0);
+    g.push(part(Sph(1.38, BW, BH), 0.6, { y: 2.62, sy: 0.82 }));
+    g.push(part(Sph(0.93, SW, SH), 0.55, { y: 3.2, x: 0.75, z: 0.2 }));
+    g.push(part(Sph(0.88, SW, SH), 0.65, { y: 2.3, x: -0.85, z: 0.35 }));
+    g.push(part(Sph(0.7, SW, SH), 0.58, { y: 3.05, z: -0.75 }));
+    g.push(part(Sph(0.62, SW, SH), 0.68, { y: 2.15, x: 0.6, z: -0.72 }));
   } else {                                                   // street round
-    g.push(part(Cyl(0.09, 0.145, 1.6, 7), 0.24, { y: 0.8 }));
-    g.push(part(Sph(1.12, BW, BH), 0.6, { y: 2.35, sy: 0.9 }));
-    g.push(part(Sph(0.72, SW, SH), 0.55, { y: 2.95, x: 0.45, z: 0.18 }));
-    g.push(part(Sph(0.58, SW, SH), 0.64, { y: 1.95, x: -0.5, z: 0.28 }));
+    g.push(part(Cyl(0.085, 0.15, 1.62, 7), 0.24, { y: 0.81 }));
+    g.push(part(Cyl(0.15, 0.24, 0.28, 7), 0.22, { y: 0.14 }));
+    limb(1.66, 0.2, 0.05, 0.72, 0, -0.55);
+    limb(1.72, -0.14, -0.16, 0.66, 0.5, 0.3);
+    g.push(part(Sph(1.1, BW, BH), 0.6, { y: 2.38, sy: 0.9 }));
+    g.push(part(Sph(0.7, SW, SH), 0.55, { y: 2.96, x: 0.44, z: 0.18 }));
+    g.push(part(Sph(0.56, SW, SH), 0.64, { y: 2.0, x: -0.52, z: 0.3 }));
+    g.push(part(Sph(0.5, SW, SH), 0.58, { y: 2.52, x: 0.14, z: -0.6 }));
   }
   return mergeGeoms(g);
 }
@@ -1397,7 +1407,7 @@ function personCore(v, c) {
    torso, head, and arm cross-sections, so every join has continuous curvature
    like a cast vinyl figure. Legs stay separate (the reference keeps a crotch split). */
 function radialBody(o) {
-  const ph = !!o.phone, skin = 0.97, zh = ph ? 0.04 : 0;
+  const ph = !!o.phone, skin = 0.97, zh = ph ? 0.075 : 0;
   /* proportions taken off the reference: big ball head ≈ a third of the
      height over a pinched neck, wide hips, belly widest low and pushed
      forward, crotch at ~28% so the legs stay short and chunky */
@@ -1415,7 +1425,7 @@ function radialBody(o) {
     return 0;
   };
   const belly = y => (o.dress ? 0.03 : 0.048) * Math.exp(-Math.pow((y - 0.72) / 0.26, 2));
-  const headR = 0.3, headY = 1.5;
+  const headR = 0.3, headY = ph ? 1.482 : 1.5;              // phone users look down at it
   const headSect = y => { const dy = y - headY; const q = headR * headR - dy * dy; return q > 0 ? Math.sqrt(q) : 0; };
   /* only the deltoid lives in the body surface — it swells off the upper
      torso and melts back in; the arm itself hangs as a separate tube so a
@@ -1548,6 +1558,12 @@ const legKeys = o => {
   ];
   return o.dress ? K.slice(0, 8).concat([[0.360, 0.108, 0, 0.100, 0.100]]) : K;
 };
+/* One frame for the held phone: its plate is tilted so the face normal points
+   straight at the head, and the emissive quad reuses the same vector. */
+const PH_P = new THREE.Vector3(0.105, 1.185, 0.30);
+const PH_N = new THREE.Vector3(0, 1.482, 0.075).sub(PH_P).normalize();
+const PH_RX = -Math.acos(THREE.MathUtils.clamp(PH_N.y, -1, 1));
+const PH_RY = Math.atan2(PH_N.x / Math.sin(PH_RX), PH_N.z / Math.sin(PH_RX));
 function makePerson(o) {
   const g = [], smooth = [];
   const ph = !!o.phone;
@@ -1557,22 +1573,37 @@ function makePerson(o) {
   for (const s of [-1, 1]) smooth.push(limbTube(lk, s, shoe, o.dress ? LNR - 1 : LNR, LNS));
   smooth.push(limbTube(armKeys(o), -1, o.top, LNR, LNS));
   if (!ph) smooth.push(limbTube(armKeys(o), 1, o.top, LNR, LNS));
-  if (ph) {                                                 // bent texting arm + phone
-    g.push(part(Cap(0.07, 0.16, 10), o.top, { x: 0.21, y: 0.97, rz: -0.2 }));
-    g.push(part(Cap(0.06, 0.16, 10), o.top, { rx: -1.05, x: 0.15, y: 1.02, z: 0.12 }));
-    g.push(part(Sph(0.085, 10, 8), o.top, { x: 0.125, y: 0.99, z: 0.17 }));   // cradles the lower bezel, stays behind the screen
-    g.push(part(Box(0.13, 0.2, 0.022), 0.06, { rx: -0.5, x: 0.115, y: 1.1, z: 0.235 }));
-    g.push(part(Box(0.104, 0.168, 0.02), 0.97, { rx: -0.5, x: 0.115, y: 1.105, z: 0.245 }));   // bright screen
+  if (ph) {
+    /* elbow tucked to the ribs, forearm swinging up and inward, palm open
+       under a phone tilted back so its screen faces the figure's own face */
+    smooth.push(limbTube([                                  // upper arm, elbow -> deltoid
+      [0.918, 0.216, 0.088, 0.058, 0.058],
+      [1.000, 0.228, 0.062, 0.064, 0.064],
+      [1.080, 0.238, 0.032, 0.068, 0.068],
+      [1.150, 0.236, 0.010, 0.060, 0.060],
+    ], 1, o.top, LNR, LNS));
+    smooth.push(limbTube([                                  // forearm, elbow -> palm
+      [0.915, 0.214, 0.095, 0.058, 0.058],
+      [0.975, 0.192, 0.145, 0.057, 0.057],
+      [1.032, 0.160, 0.200, 0.056, 0.056],
+      [1.078, 0.130, 0.248, 0.058, 0.066],
+      [1.105, 0.112, 0.278, 0.064, 0.076],
+    ], 1, o.top, LNR, LNS));
+    /* PH_N is the unit vector from the phone to the head; the plate's own
+       +y is rotated onto it, so the screen looks the figure in the face */
+    g.push(part(Box(0.135, 0.022, 0.205), 0.06, { rx: PH_RX, ry: PH_RY, x: PH_P.x, y: PH_P.y, z: PH_P.z }));
+    g.push(part(Box(0.108, 0.02, 0.17), 0.97, { rx: PH_RX, ry: PH_RY,
+      x: PH_P.x + PH_N.x * 0.013, y: PH_P.y + PH_N.y * 0.013, z: PH_P.z + PH_N.z * 0.013 }));
   }
-  const hy = 1.5, HS = MOBILE ? 12 : 15;                    // head is part of radialBody; accessories sit on it
+  const hy = ph ? 1.482 : 1.5, hz = ph ? 0.075 : 0, HS = MOBILE ? 12 : 15;   // accessories ride the head
   if (o.hat === 'cap') {
-    g.push(part(Sph(0.322, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), 0.08, { rx: ph ? 0.18 : 0, y: hy + 0.05, z: ph ? 0.06 : 0 }));
-    g.push(part(Box(0.34, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.2 : 0), y: hy + (ph ? 0.03 : 0.06), z: (ph ? 0.34 : 0.31) }));
+    g.push(part(Sph(0.36, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.5), 0.08, { rx: ph ? 0.36 : 0, y: hy + 0.045, z: hz }));
+    g.push(part(Box(0.34, 0.045, 0.25), 0.08, { rx: -0.14 + (ph ? 0.42 : 0), y: hy + (ph ? -0.02 : 0.06), z: hz + 0.31 }));
   } else if (o.hat === 'brim') {
     g.push(part(Cyl(0.43, 0.43, 0.035, 12), 0.9, { y: hy + 0.15 }));
     g.push(part(Sph(0.272, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.45), 0.9, { y: hy + 0.14 }));
   } else if (o.hair !== undefined) {
-    g.push(part(Sph(0.327, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.15 : 0), y: hy + 0.02, z: ph ? 0.02 : -0.02 }));
+    g.push(part(Sph(0.345, HS, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), o.hair, { rx: -0.25 + (ph ? 0.4 : 0), y: hy, z: hz }));
     if (o.bun) g.push(part(Sph(0.105, 8, 6), o.hair, { y: hy + 0.26, z: -0.19 }));
     if (o.pony) g.push(part(Cap(0.065, 0.22, 7), o.hair, { y: hy, z: -0.33, rx: 0.55 }));
   }
@@ -1665,8 +1696,8 @@ const peopleMeshes = peopleVariants.map((geo, vi) => {
 /* emissive phone screens — the brightest thing in the scene, per the toy-photo read */
 const phoneFolk = [...walkers, ...crossers].filter(w => w.v === 2 || w.v === 5);
 const screenLocal = new THREE.Matrix4().compose(
-  new THREE.Vector3(0.115, 1.108, 0.252),
-  new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.5, 0, 0)),
+  PH_P.clone().addScaledVector(PH_N, 0.017),
+  new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), PH_N),
   new THREE.Vector3(1, 1, 1));
 const screenTmp = new THREE.Matrix4();
 const screens = new THREE.InstancedMesh(
@@ -1680,16 +1711,47 @@ scene.add(screens);
 phoneFolk.forEach((w, i) => { w.screenSlot = i; });
 
 /* dogs trotting beside a few walkers — same vinyl language as the people */
-const dogGeo = mergeGeoms([
-  part(Cap(0.115, 0.24, 9), 0.94, { y: 0.34, rx: Math.PI / 2 }),                    // soft body
-  part(Sph(0.15, 10, 8), 0.94, { y: 0.54, z: 0.24 }),                               // big round head
-  part(Sph(0.075, 9, 7), 0.9, { y: 0.47, z: 0.37, sz: 1.15 }),                      // muzzle bump
-  part(Sph(0.052, 8, 6), 0.85, { x: 0.105, y: 0.63, z: 0.19, sy: 1.5, sz: 0.7 }),   // floppy ears
-  part(Sph(0.052, 8, 6), 0.85, { x: -0.105, y: 0.63, z: 0.19, sy: 1.5, sz: 0.7 }),
-  part(Cap(0.038, 0.11, 7), 0.94, { y: 0.42, z: -0.3, rx: -0.9 }),                  // tail stub
-  part(Cap(0.048, 0.09, 7), 0.94, { x: 0.075, y: 0.12, z: 0.16 }), part(Cap(0.048, 0.09, 7), 0.94, { x: -0.075, y: 0.12, z: 0.16 }),
-  part(Cap(0.048, 0.09, 7), 0.94, { x: 0.075, y: 0.12, z: -0.14 }), part(Cap(0.048, 0.09, 7), 0.94, { x: -0.075, y: 0.12, z: -0.14 }),
-]);
+/* The dog, per the vinyl-toy reference: body, neck, head and muzzle are ONE
+   continuous lofted surface (no seam at the neck), with floppy ears, round
+   eyes, a button nose, four swept legs and a stub tail. */
+const dogGeo = (() => {
+  const BODY_NS = MOBILE ? 10 : 14, LEG_NR = MOBILE ? 5 : 6, LEG_NS = MOBILE ? 6 : 7;
+  const T = 0.94;
+  const g = [];
+  /* z runs tail -> nose; each station is [z, yBottom, yTop, halfWidth, exponent] */
+  g.push(shell([
+    [-0.40, 0.205, 0.305, 0.052, 2.2],                       // tail root
+    [-0.33, 0.150, 0.355, 0.113, 2.4],                       // rump
+    [-0.21, 0.125, 0.375, 0.153, 2.6],                       // hips
+    [-0.05, 0.115, 0.375, 0.166, 2.7],                       // barrel
+    [ 0.09, 0.120, 0.385, 0.171, 2.7],                       // chest
+    [ 0.19, 0.147, 0.402, 0.153, 2.6],                       // shoulders
+    [ 0.25, 0.188, 0.452, 0.124, 2.5],                       // neck
+    [ 0.30, 0.200, 0.548, 0.156, 2.6],                       // jaw + skull rising
+    [ 0.375, 0.205, 0.578, 0.176, 2.9],                      // head at its widest
+    [ 0.44, 0.228, 0.552, 0.152, 2.8],                       // brow
+    [ 0.49, 0.252, 0.478, 0.093, 2.5],                       // muzzle
+    [ 0.535, 0.272, 0.438, 0.060, 2.3],                      // nose pad
+  ], BODY_NS, T));
+  const legK = zc => [                                       // paw -> shoulder, tucked into the barrel
+    [0.004, 0.096, zc + 0.030, 0.050, 0.070],
+    [0.030, 0.096, zc + 0.024, 0.061, 0.079],
+    [0.072, 0.096, zc + 0.005, 0.049, 0.053],
+    [0.150, 0.096, zc,         0.052, 0.056],
+    [0.265, 0.096, zc - 0.006, 0.069, 0.076],
+  ];
+  for (const zc of [0.135, -0.155]) for (const sq of [-1, 1])
+    g.push(limbTube(legK(zc), sq, T, LEG_NR, LEG_NS));
+  for (const sq of [-1, 1]) {                                // floppy ears down the sides of the skull
+    g.push(part(Sph(0.072, MOBILE ? 7 : 9, MOBILE ? 5 : 7), 0.88,
+      { x: sq * 0.152, y: 0.432, z: 0.352, sx: 0.52, sy: 1.62, sz: 0.92, rz: sq * 0.2, ry: sq * -0.25 }));
+    g.push(part(Sph(0.026, 6, 5), 0.13, { x: sq * 0.079, y: 0.474, z: 0.462, sz: 0.7 }));   // eye
+    g.push(part(Sph(0.033, 7, 5), 0.9, { x: sq * 0.115, y: 0.235, z: 0.145, sy: 0.8 }));    // shoulder muscle
+  }
+  g.push(part(Sph(0.032, 7, 5), 0.12, { y: 0.408, z: 0.552, sz: 0.78 }));                   // nose button
+  g.push(part(Cap(0.030, 0.10, 7), T, { y: 0.40, z: -0.40, rx: -0.75 }));                   // stub tail
+  return mergeGeoms(g);
+})();
 /* cats — smaller, pointed ears, upright curled tail; some wander, some sit */
 const catGeo = mergeGeoms([
   part(Cap(0.082, 0.18, 9), 0.94, { y: 0.24, rx: Math.PI / 2 }),
@@ -1702,10 +1764,6 @@ const catGeo = mergeGeoms([
   part(Cap(0.035, 0.07, 7), 0.94, { x: 0.052, y: 0.09, z: 0.11 }), part(Cap(0.035, 0.07, 7), 0.94, { x: -0.052, y: 0.09, z: 0.11 }),
   part(Cap(0.035, 0.07, 7), 0.94, { x: 0.052, y: 0.09, z: -0.1 }), part(Cap(0.035, 0.07, 7), 0.94, { x: -0.052, y: 0.09, z: -0.1 }),
 ]);
-blobNormals(dogGeo, (v, c) => {
-  if (v.z > 0.12 && v.y > 0.32) c.set(0, 0.53, 0.24);
-  else c.set(0, 0.33, THREE.MathUtils.clamp(v.z, -0.18, 0.12));
-}, 0.55);
 blobNormals(catGeo, (v, c) => {
   if (v.z > 0.08 && v.y > 0.26) c.set(0, 0.38, 0.17);
   else c.set(0, 0.23, THREE.MathUtils.clamp(v.z, -0.14, 0.1));
@@ -1731,13 +1789,20 @@ const cats = [];
 const dogs = [];
 {
   const owners = walkers.filter(w => !w.idle && w.axis === 'z' && w.v !== 2).slice(0, P.dogs);
-  const mesh = new THREE.InstancedMesh(dogGeo, peopleMat, Math.max(owners.length, 1));
-  mesh.count = Math.max(owners.length, 1);
+  const NPARK = MOBILE ? 3 : 6;                              // off-leash dogs circling the run
+  const total = owners.length + NPARK;
+  const mesh = new THREE.InstancedMesh(dogGeo, peopleMat, Math.max(total, 1));
+  mesh.count = Math.max(total, 1);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.castShadow = P.shadows; mesh.frustumCulled = false;
   scene.add(mesh);
   const C = new THREE.Color();
   owners.forEach((o, i) => { dogs.push({ owner: o, mesh, slot: i }); mesh.setColorAt(i, C.setScalar(R() < 0.5 ? 0.12 : 0.9)); });
+  for (let i = 0; i < NPARK; i++) {
+    dogs.push({ park: true, mesh, slot: owners.length + i, a: rr(0, 6.28), r: rr(3.5, 9.5),
+                spd: rr(0.5, 1.05) * (R() < 0.5 ? 1 : -1), ph: R() * 9, sc: rr(0.82, 1.12) });
+    mesh.setColorAt(owners.length + i, C.setScalar([0.12, 0.9, 0.42, 0.95, 0.24, 0.7][i % 6]));
+  }
   if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
@@ -1832,6 +1897,130 @@ function bandOf(z0, z1, hw, y0, y1, n) {
     [z1,            y0 + H * 0.2, y1 - H * 0.2, hw * 0.86, n],
   ];
 }
+
+/* ---- ONE-PIECE VEHICLE HULL -------------------------------------------
+   A car is a single closed tube, greenhouse included. The glasshouse is not
+   a second volume pushed through the body — it is the UPPER LOBE of the very
+   same ring, everywhere along the car. The vertices that trace a crowned
+   boot deck at the tail trace a domed roof over the cabin, so hood,
+   windshield, roof, backlight and boot deck loft as one plain quad strip.
+   There is no intersection curve left to see, and one continuous normal
+   field runs nose to tail.
+
+   Each half-section is two tangent-continuous arcs meeting at the beltline:
+   below it the flank swells to max beam LOW on the body and turns under at
+   the rocker; above it the tumblehome draws in to the roof rail and domes to
+   the crown. Phantom control points mirror across both poles so the
+   underbody centreline and the roof crown stay tangent-flat.
+
+   Tone is painted PER TRIANGLE after toNonIndexed(), so the paint/glass
+   break is a knife edge that costs no extra vertices and leaves the shading
+   continuous across it. */
+let HU = MOBILE ? 3 : 5, HL = MOBILE ? 2 : 4;                // ring samples per lobe, per side
+const ringN = () => 2 * (HU + HL);
+/* uniform Catmull-Rom over a list whose first and last entries are phantoms */
+function crPt(P, u) {
+  const n = P.length - 3;
+  const f = Math.min(n - 1e-9, Math.max(0, u) * n), i = Math.floor(f) + 1, t = f - (i - 1);
+  const t2 = t * t, t3 = t2 * t;
+  const c = (a, b, d, e) => 0.5 * (2 * b + (-a + d) * t + (2 * a - 5 * b + 4 * d - e) * t2 + (-a + 3 * b - 3 * d + e) * t3);
+  return [c(P[i - 1][0], P[i][0], P[i + 1][0], P[i + 2][0]),
+          c(P[i - 1][1], P[i][1], P[i + 1][1], P[i + 2][1])];
+}
+/* one closed section, traversed the same rotational way shell() does —
+   right belt, up over the crown, down the left flank, under, and back */
+function hullRing(st) {
+  const yU = st[1], yB = st[2], yT = st[3], hw = st[4], wR = st[5], bx = st[8] || 0;
+  const wB = 0.965 * hw, dh = Math.max(0.02, yT - yB), db = Math.max(0.02, yB - yU);
+  const UP = [
+    [wB + 0.06 * hw, yB - 0.30 * dh],                        // phantom: leaves the belt up-and-in
+    [wB, yB],
+    [wR * hw, yB + 0.72 * dh],                               // roof rail
+    [0, yT],                                                 // crown pole
+    [-wR * hw, yB + 0.72 * dh],                              // phantom mirror: flat crown tangent
+  ];
+  const LO = [
+    [wB - 0.04 * hw, yB + 0.20 * db],                        // phantom: a slope break at the belt
+    [wB, yB],
+    [hw, yU + lerp(0.62, 0.52, bx) * db],                    // max beam, low on the flank
+    [lerp(0.78, 0.96, bx) * hw, yU + 0.05 * db],             // rocker turn-under
+    [0, yU],                                                 // underbody pole
+    [-lerp(0.78, 0.96, bx) * hw, yU + 0.05 * db],            // phantom mirror: flat underbody
+  ];
+  const up = [], lo = [], r = [];
+  for (let i = 0; i <= HU; i++) up.push(crPt(UP, i / HU));
+  for (let i = 0; i <= HL; i++) lo.push(crPt(LO, i / HL));
+  for (let i = 0; i <= HU; i++) r.push(up[i]);
+  for (let i = HU - 1; i >= 0; i--) r.push([-up[i][0], up[i][1]]);
+  for (let i = 1; i <= HL; i++) r.push([-lo[i][0], lo[i][1]]);
+  for (let i = HL - 1; i >= 1; i--) r.push([lo[i][0], lo[i][1]]);
+  return r;                                                  // always ringN() points
+}
+/* station: [z, yUnder, yBelt, yCrown, halfWidth, railFrac, glass, crownExcl, boxy] */
+function hull(st, body, glass) {
+  const NR = ringN(), pos = [], idx = [], fg = [];
+  for (const s of st) for (const v of hullRing(s)) pos.push(v[0], v[1], s[0]);
+  for (let i = 0; i < st.length - 1; i++) {
+    const band = (st[i][6] || 0) && (st[i + 1][6] || 0);      // glass only where both ends agree
+    const ex = st[i][7] || 0;                                // roof samples kept body-coloured
+    for (let a = 0; a < NR; a++) {
+      const q = i * NR + a, b = i * NR + (a + 1) % NR;
+      idx.push(q, b, q + NR, b, b + NR, q + NR);
+      const g = band && a < 2 * HU && Math.abs(a - HU) >= ex;
+      fg.push(g, g);
+    }
+  }
+  const L = st.length - 1, fa = pos.length / 3;              // caps sit at belt height, not mid-section
+  pos.push(0, st[L][2], st[L][0] + 0.05);
+  for (let a = 0; a < NR; a++) { idx.push(fa, L * NR + a, L * NR + (a + 1) % NR); fg.push(false); }
+  const ra = pos.length / 3;
+  pos.push(0, st[0][2], st[0][0] - 0.05);
+  for (let a = 0; a < NR; a++) { idx.push(ra, (a + 1) % NR, a); fg.push(false); }
+  const gi = new THREE.BufferGeometry();
+  gi.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  gi.setIndex(idx);
+  gi.computeVertexNormals();                                 // on the INDEXED geometry, then expand
+  const ni = gi.toNonIndexed();
+  gi.dispose();
+  const col = new Float32Array(ni.attributes.position.count * 3);
+  for (let f = 0; f < fg.length; f++) {
+    const c = fg[f] ? glass : body;
+    for (let k = 0; k < 3; k++) { const v = (f * 3 + k) * 3; col[v] = c; col[v + 1] = c; col[v + 2] = c; }
+  }
+  ni.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return ni;
+}
+/* a car from a handful of numbers: length, half-width, sill, belt, crown,
+   and the z range the cabin occupies */
+function carHull(L, hw, yU, yB, yT, c0, c1) {
+  const f = L / 2, dh = yT - yB;
+  return [
+    [-f,                     yU + 0.11, yB - 0.11, yB - 0.06,      hw * 0.68, 0.54, 0, 0, 0],
+    [-f * 0.89,              yU + 0.05, yB - 0.02, yB + dh * 0.10, hw * 0.91, 0.60, 0, 0, 0],
+    [c0 - 0.18,              yU + 0.01, yB,        yB + dh * 0.17, hw * 0.98, 0.62, 1, 0, 0],
+    [c0,                     yU,        yB,        yB + dh * 0.62, hw,        0.72, 1, 0, 0],
+    [c0 + (c1 - c0) * 0.34,  yU,        yB,        yB + dh * 0.97, hw,        0.80, 1, 0, 0],
+    [c0 + (c1 - c0) * 0.68,  yU,        yB,        yT,             hw,        0.80, 1, 0, 0],
+    [c1,                     yU,        yB,        yB + dh * 0.86, hw,        0.76, 1, 0, 0],
+    [c1 + (f - c1) * 0.34,   yU + 0.01, yB,        yB + dh * 0.13, hw * 0.99, 0.66, 1, 0, 0],
+    [c1 + (f - c1) * 0.68,   yU + 0.01, yB - 0.01, yB + dh * 0.07, hw * 0.97, 0.62, 0, 0, 0],
+    [f * 0.9,                yU + 0.04, yB - 0.05, yB + dh * 0.03, hw * 0.89, 0.58, 0, 0, 0],
+    [f,                      yU + 0.10, yB - 0.11, yB - 0.05,      hw * 0.67, 0.54, 0, 0, 0],
+  ];
+}
+/* a boxy hull — van, bus, cargo body — whose belt is the foot of its window
+   band, so the same upper lobe carries the glass with the roof kept white */
+function boxHull(L, hw, yU, yB, yT, gl, ex, zc = 0) {
+  const f = L / 2;
+  return [
+    [zc - f,         yU + 0.07, yB - 0.05, yT - 0.10, hw * 0.90, 0.86, 0,  ex, 1],
+    [zc - f * 0.93,  yU + 0.01, yB,        yT - 0.02, hw * 0.99, 0.90, gl, ex, 1],
+    [zc - f * 0.5,   yU,        yB,        yT,        hw,        0.92, gl, ex, 1],
+    [zc + f * 0.5,   yU,        yB,        yT,        hw,        0.92, gl, ex, 1],
+    [zc + f * 0.93,  yU + 0.01, yB,        yT - 0.02, hw * 0.99, 0.90, gl, ex, 1],
+    [zc + f,         yU + 0.07, yB - 0.05, yT - 0.10, hw * 0.90, 0.86, 0,  ex, 1],
+  ];
+}
 let BNS = MOBILE ? 8 : 12, GNS = MOBILE ? 6 : 10, WSEG = MOBILE ? 9 : 14, HUBS = !MOBILE;
 /* the continuous light strip across nose and tail, as in the references */
 const lamps = (g, hw, f, y) => {
@@ -1840,10 +2029,9 @@ const lamps = (g, hw, f, y) => {
 };
 function makeSedan(taxi) {
   const g = [];
-  g.push(shell(bodyOf(4.6, 0.87, 0.22, 0.90, 5.2), BNS, 1));
-  g.push(shell(cabinOf(-1.76, 0.95, 0.79, 0.58, 1.44, 4.8), GNS, 0.13));
+  g.push(hull(carHull(4.6, 0.87, 0.22, 0.90, 1.35, -1.76, 0.44), 1, 0.13));
   lamps(g, 0.87, 2.3, 0.58);
-  if (taxi) g.push(part(Box(0.5, 0.15, 0.2), 0.85, { y: 1.44, z: -0.3 }));
+  if (taxi) g.push(part(Box(0.5, 0.15, 0.2), 0.85, { y: 1.32, z: -0.6 }));
   wheelsFor(g, 0.30, 0.80, [1.38, -1.38]);
   return mergeGeoms(g);
 }
@@ -1923,8 +2111,7 @@ function makeScooter() {
 }
 function makeFlatbed() {
   const g = [];
-  g.push(shell(bodyOf(2.3, 0.95, 0.32, 1.32, 5, 0.8, 2.1), BNS, 1));        // rounded aero cab
-  g.push(shell(cabinOf(1.2, 3.05, 0.88, 1.26, 2.05, 4.4), GNS, 0.13));      // domed glass top
+  g.push(hull(carHull(2.4, 0.95, 0.32, 1.14, 2.02, -0.5, 0.62, 2.1), 1, 0.13));   // rounded aero cab
   g.push(part(Box(2.0, 0.28, 4.4), 0.85, { y: 0.78, z: -0.9 }));            // deck
   g.push(part(Box(1.3, 0.9, 1.2), 0.6, { y: 1.36, z: -0.45 }));             // crates
   g.push(part(Box(0.9, 0.6, 0.9), 0.72, { y: 1.21, z: -1.95 }));
@@ -1942,7 +2129,7 @@ function makeLimo() {
 }
 const buildVehicleSet = () => [makeSedan(false), makeSedan(true), makeSUV(), makeVan(), makeTruck(), makeBus(), makeHatch(), makePickup(), makeCoupe(), makeScooter(), makeFlatbed(), makeLimo()];
 const vehicleGeos = buildVehicleSet();                       // fine: hero-avenue traffic + kerbside
-if (!MOBILE) { BNS = 9; GNS = 7; WSEG = 10; HUBS = false; }
+if (!MOBILE) { BNS = 7; GNS = 5; WSEG = 7; HUBS = false; }
 const vehicleGeosFar = MOBILE ? null : buildVehicleSet();    // lean: district traffic seen from altitude
 const NV = vehicleGeos.length;
 const vehicleTints = [
@@ -1987,18 +2174,23 @@ for (const ln of lanes) {
   const n = Math.min(ln.hero ? P.cars + 12 : Math.round(P.cars * 0.7), Math.floor((ln.smax - ln.smin) / 16));
   for (let i = 0; i < n; i++) {
     const v = vehiclePick();
+    /* two-way: the two lanes of an avenue run opposite ways, each keeping
+       right of its own centreline */
+    const side = (i % 2) ? 1 : -1;
     cars.push({
-      v, ln, off: (i % 2 ? 2.6 : -2.6),
+      v, ln, off: side * 2.6,
       s: ln.smin + (i + R() * 0.5) / n * (ln.smax - ln.smin),
       mi: (MOBILE || ln.hero) ? v : v + NV,
-      dir: ln.dir, cruise: rr(6.5, 8.8), vel: rr(6.5, 8.8), hero: ln.hero,
+      dir: -side, cruise: rr(6.5, 8.8), vel: rr(6.5, 8.8), hero: ln.hero,
       tint: vehicleTints[v][(R() * vehicleTints[v].length) | 0],
     });
   }
 }
 for (const side of [-1, 1]) {
   const list = cars.filter(c => c.hero && Math.sign(c.off) === side).sort((a, b) => a.s - b.s);
-  list.forEach((c, i) => { c.ahead = list[(i + 1) % list.length]; });
+  if (!list.length) continue;
+  const fwd = list[0].dir > 0;                               // "ahead" follows travel, not the s axis
+  list.forEach((c, i) => { c.ahead = list[(i + (fwd ? 1 : list.length - 1)) % list.length]; });
 }
 const parked = [];
 {
@@ -2007,7 +2199,7 @@ const parked = [];
     if (Math.abs(z - HERO_ST) < 10 || Math.abs(z - STOP_LINE) < 7) continue;
     if (z > 48 && z < 64) continue;                          // keep the lateral center-stage clear
     const pv = [0, 1, 2, 3, 6, 8][(R() * 6) | 0];
-    parked.push({ v: pv, x: side * 6.3, z, ry: side > 0 ? 0 : Math.PI, tint: vehicleTints[pv][(R() * vehicleTints[pv].length) | 0] });
+    parked.push({ v: pv, x: side * 6.3, z, ry: side > 0 ? Math.PI : 0, tint: vehicleTints[pv][(R() * vehicleTints[pv].length) | 0] });
   }
   for (const zc of [-42, -2, 78]) for (let i = 0; i < 4; i++) {
     const side = R() < 0.5 ? 1 : -1;
@@ -2287,14 +2479,14 @@ function tick() {
   /* lens: long aerial → widen through the canyon → narrow planimetric finale */
   camera.fov = 34 + (58 - 34) * sstep(p, 0.45, 0.78) - (58 - (MOBILE ? 54 : 27)) * sstep(p, 0.84, 0.985);
   if (qs.get('fig')) {                                     // dev: figure close-up inspection
-    camera.position.set(-11.5, 3.2, 100);
-    camera.lookAt(-27, 0.2, 117);
-    camera.fov = 38;
+    camera.position.set(-24.2, 0.72, 111.5);
+    camera.lookAt(-27.6, 0.34, 115.4);
+    camera.fov = 30;
   }
   if (qs.get('fleet')) {                                     // dev: fleet showroom
-    camera.position.set(1, 12, 76);
-    camera.lookAt(2, 0.2, 38);
-    camera.fov = 52;
+    camera.position.set(-3.0, 2.1, 61.0);
+    camera.lookAt(-7.0, 0.62, 50.5);
+    camera.fov = 40;
   }
   camera.near = lerp(3.5, 0.16, sstep(p, 0.55, 0.92));
   camera.far = lerp(2800, 950, sstep(p, 0.55, 0.92));
@@ -2324,14 +2516,14 @@ function tick() {
   /* ---- vehicles ---- */
   if (!qs.get('fleet')) for (const c of cars) {
     let vdes = c.cruise;
-    if (c.hero && c.dir > 0) {
+    if (c.hero) {
       const z = c.ln.oz + c.ln.dz * c.s;
-      if (ls !== 'green') {
-        const d = STOP_LINE - 2.4 - z;
+      if (ls !== 'green') {                                  // each direction has its own stop line
+        const d = c.dir > 0 ? STOP_LINE - 2.4 - z : z - (2 * HERO_ST - STOP_LINE) - 2.4;
         if (d > 0 && d < 42) vdes = Math.min(vdes, d * 0.55);
         else if (d <= 0 && d > -4.8 && c.vel < 1.5) vdes = 0;
       }
-      const gap = (c.ahead.s - c.s + 1300) % 1300 - carLen[c.ahead.v] * 0.5 - carLen[c.v] * 0.5;
+      const gap = ((c.ahead.s - c.s) * c.dir + 1300) % 1300 - carLen[c.ahead.v] * 0.5 - carLen[c.v] * 0.5;
       if (gap < 26) vdes = Math.min(vdes, Math.max(0, (gap - 3.4) * 0.9));
     }
     c.vel = dampf(c.vel, vdes, 3.2, dt);
@@ -2410,10 +2602,26 @@ function tick() {
     }
     peopleMeshes.forEach(m => { m.instanceMatrix.needsUpdate = true; });
     screens.instanceMatrix.needsUpdate = true;
+    const RUN_C = Math.cos(0.25), RUN_S = Math.sin(0.25);
     for (const d of dogs) {
+      if (d.park) {                                          // off-leash: loops inside the run
+        d.a += d.spd * dt / Math.max(1.2, d.r * 0.4);
+        const sg = Math.sign(d.spd);
+        const ex = Math.cos(d.a) * d.r * 0.62, ez = Math.sin(d.a) * d.r;
+        const vx = -Math.sin(d.a) * d.r * 0.62 * sg, vz = Math.cos(d.a) * d.r * sg;
+        d.wx = -27 + ex * RUN_C - ez * RUN_S;
+        d.wz = 118 + ex * RUN_S + ez * RUN_C;
+        D3.position.set(d.wx, Math.abs(Math.sin(t * 9 + d.ph)) * 0.05, d.wz);
+        D3.rotation.set(0, Math.atan2(vx * RUN_C - vz * RUN_S, vx * RUN_S + vz * RUN_C), 0);
+        D3.scale.setScalar(d.sc);
+        D3.updateMatrix();
+        d.mesh.setMatrixAt(d.slot, D3.matrix);
+        continue;
+      }
       const o = d.owner;
       const wob = Math.sin(t * 8 + o.ph);
-      D3.position.set(o.x + (o.xOff || 0) + 0.55, Math.abs(wob) * 0.03, o.z + o.dir * -0.9);
+      d.wx = o.x + (o.xOff || 0) + 0.55; d.wz = o.z + o.dir * -0.9;
+      D3.position.set(d.wx, Math.abs(wob) * 0.03, d.wz);
       D3.rotation.set(0, o.dir > 0 ? 0 : Math.PI, 0);
       D3.scale.setScalar(1);
       D3.updateMatrix();
@@ -2433,15 +2641,6 @@ function tick() {
       ct.mesh.setMatrixAt(ct.slot, D3.matrix);
     }
     if (cats.length) { cats[0].mesh.instanceMatrix.needsUpdate = true; }
-  for (const dk of ducks) {                                  // pond ducks drift slow ellipses
-    dk.a += dk.spd * dt;
-    D3.position.set(dk.cx + Math.cos(dk.a) * dk.r, 0.045 + Math.sin(t * 1.3 + dk.ph) * 0.015, dk.cz + Math.sin(dk.a) * dk.r * 1.5);
-    D3.rotation.set(0, Math.atan2(-Math.sin(dk.a) * dk.spd, Math.cos(dk.a) * 1.5 * dk.spd), 0);
-    D3.scale.setScalar(dk.sc);
-    D3.updateMatrix();
-    duckMesh.setMatrixAt(dk.slot, D3.matrix);
-  }
-  duckMesh.instanceMatrix.needsUpdate = true;
   }
 
   /* ---- birds / planes / clouds ---- */
@@ -2492,7 +2691,7 @@ function tick() {
     for (const b of blobs) {
       const r = b.ref;
       if (b.kind === 'p') { D3.position.set(r.x + (r.xOff || 0), (r.y0 || 0) + 0.03, r.z); D3.scale.set(0.42 * (r.scale || 1), 1, 0.42 * (r.scale || 1)); }
-      else if (b.kind === 'd') { D3.position.set(r.owner.x + 0.55, 0.03, r.owner.z - 0.9); D3.scale.set(0.3, 1, 0.3); }
+      else if (b.kind === 'd') { D3.position.set(r.wx || 0, r.wx === undefined ? -60 : 0.03, r.wz || 0); D3.scale.set(0.3, 1, 0.3); }
       else if (b.kind === 'c') { D3.position.set(r.ln.ox + r.ln.dx * r.s + r.ln.px * r.off, 0.04, r.ln.oz + r.ln.dz * r.s + r.ln.pz * r.off); D3.scale.set(1.15, 1, carLen[r.v] * 0.5 * 0.55); }
       else { D3.position.set(r.x, 0.04, r.z); D3.scale.set(1.15, 1, carLen[r.v] * 0.5 * 0.55); if (Math.abs(Math.sin(r.ry || 0)) > 0.5) D3.scale.set(carLen[r.v] * 0.5 * 0.55, 1, 1.15); }
       D3.rotation.set(0, 0, 0); D3.updateMatrix();
